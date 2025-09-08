@@ -5,7 +5,7 @@ Git
 
 Instalación
 1. Clonar el repositorio
- $ git clone https://github.com/TuUsuario/NombreDelRepositorio.git
+ $ git clone github.com/xeternum/proyecto_mapa.git
  $ cd vue-app
 
 2. Instalar dependencias
