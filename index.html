@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Geo-Red de Usuarios</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <header class="main-header">
+        <div class="header-brand">GeoRed</div>
+        <button id="hamburger-menu" class="hamburger-menu">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M3 4H21V6H3V4ZM3 11H21V13H3V11ZM3 18H21V20H3V18Z"></path>
+            </svg>
+        </button>
+        <nav class="main-nav">
+            <button id="btn-search-service" class="nav-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M18.031 16.617l4.283 4.282-1.415 1.415-4.282-4.283A8.96 8.96 0 0 1 11 20c-4.968 0-9-4.032-9-9s4.032-9 9-9 9 4.032 9 9a8.96 8.96 0 0 1-1.969 5.617zm-2.006-.742A6.977 6.977 0 0 0 18 11c0-3.868-3.133-7-7-7-3.868 0-7 3.132-7 7 0 3.867 3.132 7 7 7a6.977 6.977 0 0 0 4.875-1.975l.15-.15z"></path></svg>
+                <span>Buscar</span>
+            </button>
+            <button id="btn-add-service" class="nav-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M11 11V5h2v6h6v2h-6v6h-2v-6H5v-2h6z"></path></svg>
+                <span>Publicar</span>
+            </button>
+            <button id="btn-profile-menu" class="nav-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2c5.52 0 10 4.48 10 10s-4.48 10-10 10S2 17.52 2 12 6.48 2 12 2zm0 4c-1.93 0-3.5 1.57-3.5 3.5S10.07 13 12 13s3.5-1.57 3.5-3.5S13.93 6 12 6zm0 14c-2.03 0-4.43-.82-6.14-2.88a9.947 9.947 0 0 1 12.28 0C16.43 19.18 14.03 20 12 20z"></path></svg>
+                <span>Perfil</span>
+            </button>
+        </nav>
+    </header>
+
+    <main>
+        <!-- Sección del Mapa (vista principal) -->
+        <section id="map-section" class="active-section">
+            <div id="map"></div>
+            <div class="floating-controls">
+                <button id="btn-current-location" class="control-btn" title="Mostrar tu ubicacion">
+                    <span>📍</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- Panel de Búsqueda de Servicios -->
+        <aside id="search-panel" class="search-panel">
+            <div class="panel-content">
+                <div class="panel-header">
+                    <h2>Buscar Servicios</h2>
+                    <button id="close-search-panel" class="close-btn">&times;</button>
+                </div>
+                <div class="search-container">
+                    <input type="text" id="service-search-input" placeholder="Buscar servicios..." class="search-input">
+                    <div id="service-categories" class="categories-grid"></div>
+                </div>
+                <div id="search-results" class="results-container">
+                    <div id="results-count"></div>
+                    <ul id="nearby-users-list"></ul>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Modal de Publicar Servicio - Información -->
+        <section id="service-info-modal" class="modal hidden-section">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Información del Servicio</h2>
+                    <button id="close-service-info-modal" class="close-btn">&times;</button>
+                </div>
+                <form id="register-form">
+                    <div class="form-group">
+                        <label for="service-name">Nombre del servicio:</label>
+                        <input type="text" id="service-name" required placeholder="Ej: Reparación de electrodomésticos">
+                    </div>
+                    <div class="form-group">
+                        <label for="user-email">Email de contacto:</label>
+                        <input type="email" id="user-email" value="ejemplo@servicio.com" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="service-address">Dirección del servicio:</label>
+                        <div class="address-input-container">
+                            <input type="text" id="service-address" required placeholder="Ingresa la dirección...">
+                            <button type="button" id="change-location-btn" class="change-location-btn">📍 Cambiar ubicación</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Categoría del servicio:</label>
+                        <select id="service-category" required>
+                            <option value="">Selecciona una categoría</option>
+                            <option value="Diseño Gráfico">Diseño Gráfico</option>
+                            <option value="Carpintería">Carpintería</option>
+                            <option value="Electricista">Electricista</option>
+                            <option value="Fontanería">Fontanería</option>
+                            <option value="Clases particulares">Clases particulares</option>
+                            <option value="Otros">Otros</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="submit-btn">Publicar Servicio</button>
+                </form>
+            </div>
+        </section>
+
+        <!-- Modal de Menú/Perfil -->
+        <section id="profile-modal" class="modal hidden-section">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Menú</h2>
+                    <button id="close-profile-modal" class="close-btn">&times;</button>
+                </div>
+                <div class="menu-options">
+                    <button id="btn-my-profile" class="menu-option">
+                        <span class="icon">👤</span>
+                        <span>Mi Perfil</span>
+                    </button>
+                    <button id="btn-settings" class="menu-option">
+                        <span class="icon">🔧</span>
+                        <span>Configuración</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <div id="notification-container"></div>
+
+    <!-- Hidden container for controls to be moved by JS -->
+    <div id="control-staging-area" style="display: none;">
+        <button id="btn-current-location" class="control-btn" title="Mostrar tu ubicacion">
+            <span>📍</span>
+        </button>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>

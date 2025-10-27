@@ -1,0 +1,717 @@
+/* Reset y base */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #333;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Nueva Barra de Navegación (Revisada) */
+.main-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 1rem;
+  height: 56px; /* Altura reducida */
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+}
+
+.header-brand {
+  font-size: 1.25rem; /* Tamaño ajustado */
+  font-weight: 700;
+  color: #667eea;
+}
+
+.hamburger-menu {
+  display: none; /* Oculto en desktop por defecto */
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem;
+  z-index: 1001;
+}
+
+.hamburger-menu svg {
+  width: 28px;
+  height: 28px;
+  color: #2d3748;
+}
+
+.main-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem; /* Espacio reducido entre botones */
+}
+
+.nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: transparent;
+  border: none;
+  padding: 0.5rem 0.75rem; /* Padding reducido */
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #4a5568;
+  transition: all 0.2s ease;
+}
+
+.nav-btn:hover {
+  background: #f0f2f5;
+  color: #667eea;
+}
+
+.nav-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Estilos para Mobile y Tablets Pequeñas (Menú Plegable) */
+@media (max-width: 768px) {
+  .hamburger-menu {
+    display: block; /* Muestra el botón de hamburguesa */
+  }
+
+  .main-nav {
+    display: none; /* Oculta la navegación por defecto */
+    position: absolute;
+    top: 56px; /* Justo debajo del header */
+    left: 0;
+    right: 0;
+    background: #ffffff;
+    flex-direction: column;
+    align-items: stretch; /* Los botones ocupan todo el ancho */
+    padding: 0.5rem;
+    border-bottom: 1px solid #e2e8f0;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+    gap: 0.5rem;
+  }
+
+  .main-header.nav-open .main-nav {
+    display: flex; /* Muestra el menú al abrir */
+  }
+
+  .nav-btn {
+    justify-content: flex-start;
+    padding: 0.75rem 1rem; /* Padding interno de los botones en menú */
+    font-size: 1rem;
+  }
+}
+
+/* Mapa y contenido principal */
+main {
+  position: relative;
+  top: 56px; /* Empuja el main hacia abajo para dejar espacio al header */
+  height: calc(100vh - 56px); /* Ocupa el resto de la altura de la pantalla */
+}
+
+#map-section {
+  height: 100%;
+  position: relative;
+}
+
+#map {
+  height: 100%;
+  width: 100%;
+  border-radius: 0;
+}
+
+/* Contenedor Personalizado para Controles de Mapa */
+.floating-controls {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Centra los controles horizontalmente */
+    gap: 12px; /* Espacio entre el zoom y el botón de ubicación */
+}
+
+/* Ajustes para que los controles de Leaflet se integren */
+.floating-controls .leaflet-control-zoom {
+    margin: 0; /* Resetea el margen por defecto de Leaflet */
+}
+
+.control-btn {
+  background: white;
+  border: none;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  cursor: pointer;
+  font-size: 1.2rem;
+  transition: all 0.3s ease;
+  /* Se asegura que sea clickeable */
+  pointer-events: auto;
+}
+
+.control-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* Panel de Búsqueda Lateral */
+.search-panel {
+  position: fixed;
+  top: 56px; /* Debajo del header */
+  left: 0;
+  bottom: 0;
+  width: 350px;
+  max-width: 90%;
+  background: #ffffff;
+  z-index: 990; /* Por debajo del header pero por encima del mapa */
+  box-shadow: 0 0 25px rgba(0, 0, 0, 0.1);
+  transform: translateX(-100%);
+  transition: transform 0.35s cubic-bezier(0.23, 1, 0.32, 1);
+  display: flex;
+  flex-direction: column;
+}
+
+.search-panel.is-open {
+  transform: translateX(0);
+}
+
+.panel-content {
+  overflow-y: auto;
+  height: 100%;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.panel-header h2 {
+  color: #2d3748;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+/* Modales (se mantiene para otros modales) */
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  backdrop-filter: blur(5px);
+}
+
+.modal-content {
+  background: white;
+  border-radius: 20px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+  animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem 1.5rem 1rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.modal-header h2 {
+  color: #2d3748;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: #a0aec0;
+  transition: color 0.2s;
+}
+
+.close-btn:hover {
+  color: #e53e3e;
+}
+
+/* Búsqueda */
+.search-container {
+  padding: 1.5rem;
+}
+
+.search-input {
+  width: 100%;
+  padding: 1rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  font-size: 1rem;
+  margin-bottom: 1rem;
+  transition: border-color 0.3s;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.categories-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.category-btn {
+  background: #f7fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1rem 0.5rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 0.875rem;
+}
+
+.category-btn:hover, .category-btn.active {
+  background: #667eea;
+  color: white;
+  border-color: #667eea;
+}
+
+/* Resultados */
+.results-container {
+  padding: 0 1.5rem 1.5rem;
+}
+
+#results-count {
+  color: #4a5568;
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+#nearby-users-list {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.service-card {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(102, 126, 234, 0.2);
+  transition: all 0.3s ease;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.service-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 12px 32px rgba(102, 126, 234, 0.3);
+}
+
+.service-card-header {
+  padding: 1.5rem;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+}
+
+.service-card-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.service-card-category {
+  font-size: 0.875rem;
+  opacity: 0.9;
+  background: rgba(255, 255, 255, 0.15);
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  display: inline-block;
+}
+
+.service-card-body {
+  padding: 1.5rem;
+  flex-grow: 1;
+}
+
+.service-card-body p {
+  margin: 0;
+  color: #4a5568;
+}
+
+.service-card-body p strong {
+  color: #2d3748;
+}
+
+.no-results {
+  background: white;
+  border-radius: 16px;
+  padding: 2rem;
+  text-align: center;
+  color: #4a5568;
+  grid-column: 1 / -1; /* Ocupa todo el ancho */
+}
+
+/* Formularios */
+.form-group {
+  margin-bottom: 1.5rem;
+  padding: 0 1.5rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  color: #2d3748;
+}
+
+.form-group input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 1rem;
+  transition: border-color 0.3s;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.services-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.5rem;
+}
+
+.services-grid label {
+  display: flex;
+  align-items: center;
+  padding: 0.5rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.services-grid label:hover {
+  background: #e9ecef;
+}
+
+.services-grid input[type="checkbox"] {
+  margin-right: 0.5rem;
+}
+
+.submit-btn {
+  width: calc(100% - 3rem);
+  margin: 0 1.5rem 1.5rem;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  border: none;
+  padding: 1rem;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.submit-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+/* Menú de opciones */
+.menu-options {
+  padding: 1.5rem;
+}
+
+.menu-option {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 1rem;
+  background: none;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  margin-bottom: 0.5rem;
+}
+
+.menu-option:hover {
+  background: #f7fafc;
+}
+
+.menu-option .icon {
+  margin-right: 1rem;
+  font-size: 1.2rem;
+}
+
+/* Secciones ocultas */
+.hidden-section {
+  display: none !important;
+}
+
+.active-section {
+  display: block;
+}
+
+/* Administración */
+.admin-container {
+  padding: 2rem;
+  background: white;
+  border-radius: 12px;
+  margin: 1rem;
+}
+
+.services-list {
+  list-style: none;
+  margin-top: 1rem;
+}
+
+.services-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: #f8f9fa;
+  margin-bottom: 0.5rem;
+  border-radius: 8px;
+}
+
+/* Modo de selección de ubicación en el mapa principal */
+.location-selection-mode {
+  position: relative;
+}
+
+.location-selection-mode::before {
+  content: 'Haz clic en el mapa para seleccionar la ubicación del servicio';
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(102, 126, 234, 0.95);
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 25px;
+  font-weight: 600;
+  z-index: 1001;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  animation: fadeInDown 0.3s ease-out;
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.temp-marker {
+  animation: bounceIn 0.5s ease-out;
+}
+
+@keyframes bounceIn {
+  0% {
+    transform: scale(0);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Campo de dirección */
+.address-input-container {
+  display: flex;
+  gap: 0.5rem;
+  align-items: stretch;
+}
+
+.address-input-container input {
+  flex: 1;
+}
+
+.change-location-btn {
+  background: #f7fafc;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 0.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+  font-size: 0.875rem;
+}
+
+.change-location-btn:hover {
+  background: #667eea;
+  color: white;
+  border-color: #667eea;
+}
+
+.form-group select {
+  width: 100%;
+  padding: 0.75rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 1rem;
+  background: white;
+  transition: border-color 0.3s;
+}
+
+.form-group select:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  header {
+    padding: 0.75rem;
+  }
+  
+  header h1 {
+    font-size: 1.25rem;
+    margin-bottom: 0.75rem;
+  }
+  
+  .main-nav {
+    gap: 0.25rem;
+  }
+  
+  .nav-btn {
+    min-width: 60px;
+    padding: 0.5rem 0.25rem;
+  }
+  
+  .nav-btn .icon {
+    font-size: 1.25rem;
+  }
+  
+  .nav-btn .label {
+    font-size: 0.7rem;
+  }
+  
+  .modal-content {
+    width: 95%;
+    margin: 1rem;
+  }
+  
+  .categories-grid {
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  }
+  
+  .services-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .main-nav {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  
+  .nav-btn {
+    min-width: 45%;
+    margin-bottom: 0.5rem;
+  }
+  
+  .floating-controls {
+    top: 10px;
+    right: 10px;
+  }
+  
+  .control-btn {
+    width: 40px;
+    height: 40px;
+    font-size: 1rem;
+  }
+}
+
+/* Animaciones adicionales */
+.nav-btn, .category-btn, .menu-option {
+  position: relative;
+  overflow: hidden;
+}
+
+.nav-btn::before, .category-btn::before, .menu-option::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: width 0.3s, height 0.3s;
+}
+
+.nav-btn:active::before, .category-btn:active::before, .menu-option:active::before {
+  width: 200px;
+  height: 200px;
+}
+
+
+/* Fix for Leaflet Zoom Controls */
+.leaflet-control-zoom a {
+    background-color: white !important;
+    color: #333 !important;
+    border-bottom: 1px solid #ccc !important;
+    text-decoration: none !important;
+}
+
+.leaflet-control-zoom a:hover {
+    background-color: #f4f4f4 !important;
+}
