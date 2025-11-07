@@ -1,13 +1,12 @@
 // js/uiService.js
 
-import { SKILLS } from './config.js';
+import { SERVICE_CATEGORIES } from './config.js';
 import * as DataService from './dataService.js';
 import * as ApiService from './apiService.js';
 import { haversineDistance } from './utils.js';
 
 // --- Referencias a elementos del DOM ---
 const modals = {
-    serviceInfo: document.getElementById('service-info-modal'),
     profile: document.getElementById('profile-modal')
 };
 
@@ -78,29 +77,76 @@ export const hideAllModals = () => {
 };
 
 /**
+ * Cierra todos los paneles laterales.
+ */
+export const closeAllPanels = () => {
+    document.getElementById('search-panel').classList.remove('is-open');
+    document.getElementById('publish-panel').classList.remove('is-open');
+};
+
+/**
  * Muestra u oculta el panel de búsqueda lateral.
  */
 export const toggleSearchPanel = () => {
+    const publishPanel = document.getElementById('publish-panel');
+    if (publishPanel.classList.contains('is-open')) {
+        publishPanel.classList.remove('is-open');
+    }
     document.getElementById('search-panel').classList.toggle('is-open');
 };
 
 /**
- * Renderiza los botones de categorías de servicios.
- * @param {Function} onCategoryClick - Callback para cuando se hace clic en una categoría.
- * @param {Array<string>} skillsToRender - Opcional, lista de habilidades para mostrar.
+ * Muestra u oculta el panel de publicar servicio.
  */
-export const renderServiceCategories = (onCategoryClick, skillsToRender = SKILLS) => {
-    serviceCategoriesDiv.innerHTML = ''; // Limpiar antes de renderizar
-    skillsToRender.forEach(skill => {
-        const categoryBtn = document.createElement('button');
-        categoryBtn.className = 'category-btn';
-        categoryBtn.textContent = skill;
-        categoryBtn.dataset.category = skill; // Guardar la categoría en un atributo de datos
-        categoryBtn.addEventListener('click', () => {
-            onCategoryClick(skill);
+export const togglePublishPanel = () => {
+    const searchPanel = document.getElementById('search-panel');
+    if (searchPanel.classList.contains('is-open')) {
+        searchPanel.classList.remove('is-open');
+    }
+    document.getElementById('publish-panel').classList.toggle('is-open');
+};
+
+/**
+ * Renderiza las categorías o los servicios de una categoría en el panel de búsqueda.
+ * @param {Function} onCategoryClick - Callback para clic en una categoría/servicio.
+ * @param {Function} onBackClick - Callback para clic en el botón de volver.
+ * @param {string|null} categoryName - La categoría a mostrar. Si es null, muestra las principales.
+ */
+export const renderServiceCategories = (onCategoryClick, onBackClick, categoryName = null) => {
+    serviceCategoriesDiv.innerHTML = ''; // Limpiar
+
+    if (categoryName) {
+        const category = SERVICE_CATEGORIES.find(c => c.categoria === categoryName);
+        if (!category) return;
+
+        // Botón para volver a las categorías principales
+        const backBtn = document.createElement('button');
+        backBtn.className = 'category-btn back-btn';
+        backBtn.textContent = '← Volver a categorías';
+        backBtn.addEventListener('click', onBackClick);
+        serviceCategoriesDiv.appendChild(backBtn);
+
+        // Renderizar servicios de la categoría
+        category.servicios.forEach(service => {
+            const serviceBtn = document.createElement('button');
+            serviceBtn.className = 'category-btn';
+            serviceBtn.textContent = service;
+            serviceBtn.dataset.category = service; // Se busca por el servicio específico
+            serviceBtn.addEventListener('click', () => onCategoryClick(service));
+            serviceCategoriesDiv.appendChild(serviceBtn);
         });
-        serviceCategoriesDiv.appendChild(categoryBtn);
-    });
+
+    } else {
+        // Renderizar categorías principales
+        SERVICE_CATEGORIES.forEach(category => {
+            const categoryBtn = document.createElement('button');
+            categoryBtn.className = 'category-btn';
+            categoryBtn.textContent = category.categoria;
+            categoryBtn.dataset.category = category.categoria;
+            categoryBtn.addEventListener('click', () => onCategoryClick(category.categoria, true)); // true indica que es una categoría principal
+            serviceCategoriesDiv.appendChild(categoryBtn);
+        });
+    }
 };
 
 /**
@@ -191,6 +237,44 @@ export const resetRegisterForm = () => {
 };
 
 /**
+ * Inicializa los dropdowns de categoría y servicio en el formulario de publicación.
+ */
+export const initPublishFormCategories = () => {
+    const mainCategorySelect = document.getElementById('service-main-category');
+    const subCategorySelect = document.getElementById('service-subcategory');
+
+    // Limpiar opciones existentes
+    mainCategorySelect.innerHTML = '<option value="">Selecciona una categoría</option>';
+    subCategorySelect.innerHTML = '<option value="">Selecciona un servicio</option>';
+
+    // Llenar el dropdown de categorías principales
+    SERVICE_CATEGORIES.forEach(category => {
+        const option = document.createElement('option');
+        option.value = category.categoria;
+        option.textContent = category.categoria;
+        mainCategorySelect.appendChild(option);
+    });
+
+    // Listener para cambios en la categoría principal
+    mainCategorySelect.addEventListener('change', () => {
+        const selectedCategoryName = mainCategorySelect.value;
+        subCategorySelect.innerHTML = '<option value="">Selecciona un servicio</option>'; // Resetear
+
+        if (selectedCategoryName) {
+            const selectedCategory = SERVICE_CATEGORIES.find(c => c.categoria === selectedCategoryName);
+            if (selectedCategory) {
+                selectedCategory.servicios.forEach(service => {
+                    const option = document.createElement('option');
+                    option.value = service;
+                    option.textContent = service;
+                    subCategorySelect.appendChild(option);
+                });
+            }
+        }
+    });
+};
+
+/**
  * Inicializa los listeners de eventos para los elementos de la UI.
  * @param {object} callbacks - Un objeto con las funciones a llamar para diferentes eventos. (onCloseModal, onSearchInput)
  */
@@ -201,8 +285,8 @@ export const initEventListeners = (callbacks) => {
             if (e.target === modal) callbacks.onCloseModal();
         });
     });
-    document.getElementById('close-search-panel').addEventListener('click', callbacks.onCloseSearchPanel);
-    document.getElementById('close-service-info-modal').addEventListener('click', callbacks.onCloseModal);
+    document.getElementById('close-search-panel').addEventListener('click', toggleSearchPanel);
+    document.getElementById('close-publish-panel').addEventListener('click', togglePublishPanel);
     document.getElementById('close-profile-modal').addEventListener('click', callbacks.onCloseModal);
 
     // Búsqueda en tiempo real

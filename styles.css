@@ -703,7 +703,6 @@ main {
   height: 200px;
 }
 
-
 /* Fix for Leaflet Zoom Controls */
 .leaflet-control-zoom a {
     background-color: white !important;
@@ -714,4 +713,47 @@ main {
 
 .leaflet-control-zoom a:hover {
     background-color: #f4f4f4 !important;
+}
+
+.map-hero{
+    position: absolute;
+    left: 20px;
+    top: 20px;
+    max-width: 360px;
+    background: rgba(255,255,255,0.95);
+    border-radius: 8px;
+    padding: 14px 16px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.12);
+    z-index: 600;
+    backdrop-filter: blur(4px);
+}
+.hero-title{
+    margin: 0 0 6px 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+.hero-subtitle{
+    margin: 0 0 12px 0;
+    font-size: 0.95rem;
+    color: #444;
+}
+.hero-ctas{ display:flex; gap:8px; }
+.cta-btn{
+    padding:8px 10px;
+    border-radius:6px;
+    border: none;
+    background:#1e88e5;
+    color:#fff;
+    cursor:pointer;
+    font-weight:600;
+}
+.cta-btn.secondary{
+    background:#fff;
+    color:#1e88e5;
+    border:1px solid #1e88e5;
+}
+.map-hero.hidden{ display:none; }
+/* Responsive: ocultar hero en pantallas muy pequeñas para no bloquear controles */
+@media (max-width:520px){
+    .map-hero{ left: 12px; right:12px; top: 12px; max-width: none; padding:10px; }
 }

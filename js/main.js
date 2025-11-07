@@ -1,4 +1,3 @@
-
 // js/main.js
 
 import { DEFAULT_LOCATION } from './config.js';
@@ -46,7 +45,6 @@ document.addEventListener('DOMContentLoaded', () => {
         // 2. Listeners de la UI principal
         const uiCallbacks = {
             onCloseModal: handleCloseModal,
-            onCloseSearchPanel: () => UIService.toggleSearchPanel(), // Cierra el panel
             onSearchInput: handleSearch
         };
         UIService.initEventListeners(uiCallbacks);
@@ -56,7 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const panel = document.getElementById('search-panel');
             // Si el panel se va a abrir, carga el contenido
             if (!panel.classList.contains('is-open')) {
-                UIService.renderServiceCategories(handleCategoryClick);
+                UIService.renderServiceCategories(handleCategoryClick, handleBackToCategories);
                 activeCategory = null;
                 UIService.updateActiveCategory(activeCategory);
                 performSearch('');
@@ -65,8 +63,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         document.getElementById('btn-add-service').addEventListener('click', () => {
-            UIService.hideAllModals();
-            MapService.enterLocationSelectionMode(handleMapClick);
+            UIService.initPublishFormCategories();
+            UIService.togglePublishPanel();
         });
 
         document.getElementById('btn-profile-menu').addEventListener('click', () => {
@@ -91,7 +89,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 5. Listener para el botón de cambiar ubicación
         document.getElementById('change-location-btn').addEventListener('click', () => {
-            UIService.hideModal('serviceInfo');
             MapService.enterLocationSelectionMode(handleMapClick);
         });
 
@@ -119,18 +116,57 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelector('.main-header').classList.toggle('nav-open');
         });
 
+        // Hero CTA handlers (puedes integrarlo en tu init principal)
+        const hero = document.querySelector('.map-hero');
+        const explore = document.getElementById('hero-explore');
+        const publish = document.getElementById('hero-publish');
+
+        if (explore) {
+            explore.addEventListener('click', () => {
+                // ocultar hero y dar foco al mapa
+                hero?.classList.add('hidden');
+                // opcional: centrar mapa en ubicación por defecto si existe `map` variable
+                if (window.map && typeof window.map.invalidateSize === 'function') {
+                    window.map.invalidateSize();
+                }
+                // Abrir el panel lateral de búsqueda (reutiliza el botón de navegación)
+                document.getElementById('btn-search-service')?.click();
+            });
+        }
+
+        if (publish) {
+            publish.addEventListener('click', () => {
+                // ocultar hero y abrir panel de publicar (reutiliza el botón existente)
+                hero?.classList.add('hidden');
+                document.getElementById('btn-add-service')?.click();
+            });
+        }
     };
 
     // --- Handlers (manejadores de eventos) ---
 
-    const handleCategoryClick = (category) => {
-        if (activeCategory === category) {
-            activeCategory = null;
-            performSearch('');
+    const handleCategoryClick = (item, isMainCategory) => {
+        if (isMainCategory) {
+            // Muestra los servicios de la categoría seleccionada
+            UIService.renderServiceCategories(handleCategoryClick, handleBackToCategories, item);
+            activeCategory = null; // Aún no hay una selección final
         } else {
-            activeCategory = category;
-            performSearch(category);
+            // Es un servicio final, realiza la búsqueda
+            if (activeCategory === item) {
+                activeCategory = null; // Deseleccionar si se hace clic de nuevo
+                performSearch('');
+            } else {
+                activeCategory = item;
+                performSearch(item);
+            }
         }
+        UIService.updateActiveCategory(activeCategory);
+    };
+
+    const handleBackToCategories = () => {
+        // Vuelve a mostrar las categorías principales
+        UIService.renderServiceCategories(handleCategoryClick, handleBackToCategories);
+        activeCategory = null;
         UIService.updateActiveCategory(activeCategory);
     };
 
@@ -146,7 +182,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const address = await ApiService.getStreetAddress(lat, lng);
         UIService.updateAddressInput(address);
         MapService.exitLocationSelectionMode();
-        UIService.showModal('serviceInfo');
     };
 
     const handleCloseModal = () => {
@@ -160,7 +195,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const serviceName = form.querySelector('#service-name').value;
         const userEmail = form.querySelector('#user-email').value;
         const serviceAddress = form.querySelector('#service-address').value;
-        const category = form.querySelector('#service-category').value;
+        const category = form.querySelector('#service-subcategory').value;
 
         if (!selectedLocation) {
             UIService.showNotification('Error: No se ha seleccionado ubicación en el mapa.', 'error');
@@ -180,8 +215,7 @@ document.addEventListener('DOMContentLoaded', () => {
         performSearch(''); // Actualiza la lista y el mapa
         UIService.showNotification('¡Servicio publicado con éxito!', 'success');
         UIService.resetRegisterForm();
-        handleCloseModal();
-        selectedLocation = null;
+        UIService.togglePublishPanel();
     };
 
     // --- Inicialización de la App ---

@@ -36,6 +36,17 @@
         <!-- Sección del Mapa (vista principal) -->
         <section id="map-section" class="active-section">
             <div id="map"></div>
+
+            <!-- Hero overlay (mini-landing sobre el mapa) -->
+            <div class="map-hero" role="region" aria-label="Introducción">
+                <h1 class="hero-title">Encuentra servicios locales</h1>
+                <p class="hero-subtitle">Publica tu oferta en 1 minuto</p>
+                <div class="hero-ctas">
+                    <button id="hero-explore" class="cta-btn">Explorar mapa</button>
+                    <button id="hero-publish" class="cta-btn secondary">Publicar servicio</button>
+                </div>
+            </div>
+
             <div class="floating-controls">
                 <button id="btn-current-location" class="control-btn" title="Mostrar tu ubicacion">
                     <span>📍</span>
@@ -47,7 +58,7 @@
         <aside id="search-panel" class="search-panel">
             <div class="panel-content">
                 <div class="panel-header">
-                    <h2>Buscar Servicios</h2>
+                    <h2>Buscar servicios cerca de mí</h2>
                     <button id="close-search-panel" class="close-btn">&times;</button>
                 </div>
                 <div class="search-container">
@@ -61,14 +72,14 @@
             </div>
         </aside>
 
-        <!-- Modal de Publicar Servicio - Información -->
-        <section id="service-info-modal" class="modal hidden-section">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2>Información del Servicio</h2>
-                    <button id="close-service-info-modal" class="close-btn">&times;</button>
+        <!-- Panel de Publicar Servicio -->
+        <aside id="publish-panel" class="search-panel">
+            <div class="panel-content">
+                <div class="panel-header">
+                    <h2>Publicar un servicio</h2>
+                    <button id="close-publish-panel" class="close-btn">&times;</button>
                 </div>
-                <form id="register-form">
+                <form id="register-form" class="publish-form">
                     <div class="form-group">
                         <label for="service-name">Nombre del servicio:</label>
                         <input type="text" id="service-name" required placeholder="Ej: Reparación de electrodomésticos">
@@ -85,21 +96,21 @@
                         </div>
                     </div>
                     <div class="form-group">
-                        <label>Categoría del servicio:</label>
-                        <select id="service-category" required>
+                        <label for="service-main-category">Categoría principal:</label>
+                        <select id="service-main-category" required>
                             <option value="">Selecciona una categoría</option>
-                            <option value="Diseño Gráfico">Diseño Gráfico</option>
-                            <option value="Carpintería">Carpintería</option>
-                            <option value="Electricista">Electricista</option>
-                            <option value="Fontanería">Fontanería</option>
-                            <option value="Clases particulares">Clases particulares</option>
-                            <option value="Otros">Otros</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="service-subcategory">Servicio específico:</label>
+                        <select id="service-subcategory" required>
+                            <option value="">Selecciona un servicio</option>
                         </select>
                     </div>
                     <button type="submit" class="submit-btn">Publicar Servicio</button>
                 </form>
             </div>
-        </section>
+        </aside>
 
         <!-- Modal de Menú/Perfil -->
         <section id="profile-modal" class="modal hidden-section">
@@ -125,13 +136,7 @@
 
     <div id="notification-container"></div>
 
-    <!-- Hidden container for controls to be moved by JS -->
-    <div id="control-staging-area" style="display: none;">
-        <button id="btn-current-location" class="control-btn" title="Mostrar tu ubicacion">
-            <span>📍</span>
-        </button>
-    </div>
-
+    <!-- control-staging-area eliminado para evitar IDs duplicados -->
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <script type="module" src="js/main.js"></script>
 </body>
