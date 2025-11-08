@@ -10,14 +10,11 @@
 <body>
 
     <header class="main-header">
-        <div class="header-brand">GeoRed</div>
-        <button id="hamburger-menu" class="hamburger-menu">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M3 4H21V6H3V4ZM3 11H21V13H3V11ZM3 18H21V20H3V18Z"></path>
-            </svg>
-        </button>
+        <div class="header-brand">
+            <span class="logo-text">GeoRed</span>
+        </div>
         <nav class="main-nav">
-            <button id="btn-search-service" class="nav-btn">
+            <button id="btn-search-service" class="nav-btn nav-btn-search">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor"><path d="M18.031 16.617l4.283 4.282-1.415 1.415-4.282-4.283A8.96 8.96 0 0 1 11 20c-4.968 0-9-4.032-9-9s4.032-9 9-9 9 4.032 9 9a8.96 8.96 0 0 1-1.969 5.617zm-2.006-.742A6.977 6.977 0 0 0 18 11c0-3.868-3.133-7-7-7-3.868 0-7 3.132-7 7 0 3.867 3.132 7 7 7a6.977 6.977 0 0 0 4.875-1.975l.15-.15z"></path></svg>
                 <span>Buscar</span>
             </button>
@@ -63,6 +60,7 @@
                 </div>
                 <div class="search-container">
                     <input type="text" id="service-search-input" placeholder="Buscar servicios..." class="search-input">
+                    <div id="filter-status" class="filter-status"></div>
                     <div id="service-categories" class="categories-grid"></div>
                 </div>
                 <div id="search-results" class="results-container">
@@ -85,15 +83,39 @@
                         <input type="text" id="service-name" required placeholder="Ej: Reparación de electrodomésticos">
                     </div>
                     <div class="form-group">
-                        <label for="user-email">Email de contacto:</label>
+                        <label for="service-description">Descripción del servicio:</label>
+                        <textarea id="service-description" required placeholder="Describe tu servicio en detalle..." rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="service-price">Precio desde:</label>
+                        <input type="text" id="service-price" required placeholder="Ej: Desde $15.000">
+                    </div>
+                    <div class="form-group">
+                        <label for="service-schedule">Horario de atención:</label>
+                        <select id="service-schedule" required>
+                            <option value="">Selecciona un horario</option>
+                            <option value="Lunes a Viernes">Lunes a Viernes</option>
+                            <option value="Lunes a Sábado">Lunes a Sábado</option>
+                            <option value="Lunes a Domingo">Lunes a Domingo</option>
+                            <option value="24 horas">24 horas</option>
+                            <option value="Solo festivos">Solo festivos</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="service-contact">Contacto:</label>
+                        <input type="text" id="service-contact" required placeholder="Ej: +56912345678 o correo@ejemplo.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="user-email">Email de contacto (adicional):</label>
                         <input type="email" id="user-email" value="ejemplo@servicio.com" required>
                     </div>
                     <div class="form-group">
+                        <label>Ubicación del servicio:</label>
+                        <button type="button" id="change-location-btn" class="change-location-btn">📍 Cambiar ubicación</button>
+                    </div>
+                    <div class="form-group">
                         <label for="service-address">Dirección del servicio:</label>
-                        <div class="address-input-container">
-                            <input type="text" id="service-address" required placeholder="Ingresa la dirección...">
-                            <button type="button" id="change-location-btn" class="change-location-btn">📍 Cambiar ubicación</button>
-                        </div>
+                        <input type="text" id="service-address" required placeholder="Ingresa la dirección...">
                     </div>
                     <div class="form-group">
                         <label for="service-main-category">Categoría principal:</label>
@@ -109,6 +131,19 @@
                     </div>
                     <button type="submit" class="submit-btn">Publicar Servicio</button>
                 </form>
+            </div>
+        </aside>
+
+        <!-- Panel de Detalles de Servicio -->
+        <aside id="detail-panel" class="detail-panel">
+            <div class="panel-content">
+                <div class="panel-header">
+                    <h2>Detalles del Servicio</h2>
+                    <button id="close-detail-panel" class="close-btn">&times;</button>
+                </div>
+                <div id="service-detail-content" class="service-detail-content">
+                    <!-- Contenido dinámico del servicio -->
+                </div>
             </div>
         </aside>
 

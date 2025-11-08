@@ -7,13 +7,53 @@ let map;
 let tempServiceMarker;
 let isSelectingLocation = false;
 let onLocationSelectCallback;
+let serviceMarkers = new Map(); // Almacenar marcadores por ID de servicio
 
 const categoryIcons = {
-    'Diseño Gráfico': '🎨',
-    'Carpintería': '🔨',
+    // Servicios del hogar
     'Electricista': '⚡',
-    'Fontanería': '🔧',
-    'Clases particulares': '📚',
+    'Gasfíter': '🔧', 
+    'Pintor': '🎨',
+    'Jardinero': '🌱',
+    'Aseador de hogar': '🧹',
+    'Carpintero': '🔨',
+    'Cerrajero': '�',
+    
+    // Construcción y mantenimiento
+    'Maestro en construcción': '🏗️',
+    'Instalador de pisos y cerámicas': '🧱',
+    'Soldador': '🔥',
+    'Técnico en refrigeración': '❄️',
+    'Técnico en lavadoras': '🔧',
+    
+    // Tecnología y computación
+    'Técnico en computación': '💻',
+    'Reparador de celulares': '📱',
+    'Programador web': '💻',
+    'Instalador de cámaras de seguridad': '📹',
+    
+    // Transporte y mudanzas
+    'Chofer particular': '�',
+    'Servicio de mudanza': '📦',
+    'Repartidor': '🚲',
+    'Moto delivery': '🏍️',
+    'Flete local': '🚛',
+    
+    // Cuidado personal y bienestar
+    'Peluquero': '✂️',
+    'Manicurista': '💅',
+    'Barbero': '💈',
+    'Esteticista': '💆',
+    'Podólogo': '🦶',
+    
+    // Cuidado familiar y mascotas
+    'Niñera': '👶',
+    'Cuidadores de adultos mayores': '👴',
+    'Paseador de perros': '🐕',
+    'Entrenador canino': '🐕‍🦺',
+    'Veterinario a domicilio': '�',
+    
+    // Fallback
     'Otros': '⚙️'
 };
 
@@ -72,6 +112,9 @@ export const renderMarkers = (filteredUsers) => {
         }
     });
 
+    // Limpiar el Map de referencias
+    serviceMarkers.clear();
+
     const usersToRender = filteredUsers || DataService.getUsers();
 
     usersToRender.filter(user => user.location).forEach(user => {
@@ -85,15 +128,54 @@ export const renderMarkers = (filteredUsers) => {
 
         const marker = L.marker([user.location.lat, user.location.lng], { icon: customIcon }).addTo(map);
 
-        marker.bindPopup(`
-            <div style="min-width: 200px;">
-                <h3 style="margin: 0 0 8px 0; color: #333;">${user.serviceName}</h3>
-                <p style="margin: 4px 0;"><strong>Categoría:</strong> ${user.category}</p>
-                <p style="margin: 4px 0;"><strong>Dirección:</strong> ${user.address}</p>
-                <p style="margin: 4px 0;"><strong>Contacto:</strong> <a href="mailto:${user.email}">${user.email}</a></p>
+        // Almacenar referencia del marcador
+        serviceMarkers.set(user.id, marker);
+
+        // Crear el contenido del popup ultra simplificado
+        const popupContent = `
+            <div class="service-popup-mini">
+                <h3 class="popup-title-mini">${user.serviceName}</h3>
+                <p class="popup-category-mini">${user.category}</p>
+                ${user.distance ? `<p class="popup-distance-mini">📍 ${user.distance.toFixed(1)} km</p>` : ''}
+                <div class="popup-actions-mini">
+                    <button class="popup-btn-mini primary" onclick="window.showServiceDetails('${user.id}')">
+                        Ver más
+                    </button>
+                    ${user.phone ? `
+                    <button class="popup-btn-mini secondary" onclick="window.open('tel:${user.phone}', '_self')">
+                        📞
+                    </button>
+                    ` : ''}
+                </div>
             </div>
-        `);
+        `;
+
+        marker.bindPopup(popupContent, {
+            maxWidth: 200,
+            minWidth: 180,
+            className: 'custom-popup-mini'
+        });
     });
+};
+
+/**
+ * Enfoca el mapa en un servicio específico y abre su popup.
+ * @param {number} serviceId - ID del servicio.
+ */
+export const focusOnService = (serviceId) => {
+    const marker = serviceMarkers.get(serviceId);
+    if (marker && map) {
+        // Centrar el mapa en el marcador
+        map.setView(marker.getLatLng(), 16, {
+            animate: true,
+            duration: 0.5
+        });
+        
+        // Abrir el popup después de un pequeño delay para que la animación se vea bien
+        setTimeout(() => {
+            marker.openPopup();
+        }, 300);
+    }
 };
 
 /**
@@ -137,7 +219,6 @@ export const centerMap = (lat, lng) => {
 export const enterLocationSelectionMode = (callback) => {
     isSelectingLocation = true;
     onLocationSelectCallback = callback;
-    document.getElementById('map-section').classList.add('location-selection-mode');
     map.getContainer().style.cursor = 'crosshair';
 };
 
@@ -146,7 +227,6 @@ export const enterLocationSelectionMode = (callback) => {
  */
 export const exitLocationSelectionMode = () => {
     isSelectingLocation = false;
-    document.getElementById('map-section').classList.remove('location-selection-mode');
     map.getContainer().style.cursor = '';
     removeTempMarker();
 };

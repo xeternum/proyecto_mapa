@@ -15,8 +15,26 @@ document.addEventListener('DOMContentLoaded', () => {
     let centerLocation = { ...DEFAULT_LOCATION };
     let activeCategory = null; // Para gestionar la categoría activa
     let userLocation = null; // Para guardar la ubicación del usuario
+    let isSelectingFromPublishPanel = false; // Flag para saber el contexto de selección
 
     // --- Lógica Principal ---
+
+    const hideHero = () => {
+        const hero = document.querySelector('.map-hero');
+        if (hero && !hero.classList.contains('hidden')) {
+            hero.classList.add('hidden');
+            // Opcional: centrar mapa en ubicación por defecto si existe `map` variable
+            if (window.map && typeof window.map.invalidateSize === 'function') {
+                window.map.invalidateSize();
+            }
+        }
+    };
+
+    const resetSearchState = () => {
+        activeCategory = null;
+        UIService.updateActiveCategory(null);
+        UIService.updateFilterStatus(null);
+    };
 
     const performSearch = (searchTerm) => {
         let publications = SearchService.searchUsers(searchTerm);
@@ -49,29 +67,37 @@ document.addEventListener('DOMContentLoaded', () => {
         };
         UIService.initEventListeners(uiCallbacks);
 
-        // 3. Listeners de la navegación principal
+        // 3. Configurar callback para cierre de search panel
+        UIService.setOnSearchPanelCloseCallback(resetSearchState);
+
+        // 4. Listeners de la navegación principal
         document.getElementById('btn-search-service').addEventListener('click', () => {
+            hideHero(); // Ocultar hero al hacer clic en buscar
             const panel = document.getElementById('search-panel');
             // Si el panel se va a abrir, carga el contenido
             if (!panel.classList.contains('is-open')) {
                 UIService.renderServiceCategories(handleCategoryClick, handleBackToCategories);
                 activeCategory = null;
                 UIService.updateActiveCategory(activeCategory);
+                UIService.updateFilterStatus(null); // Resetear estado del filtro
                 performSearch('');
             }
             UIService.toggleSearchPanel();
         });
 
         document.getElementById('btn-add-service').addEventListener('click', () => {
+            hideHero(); // Ocultar hero al hacer clic en publicar
             UIService.initPublishFormCategories();
             UIService.togglePublishPanel();
         });
 
         document.getElementById('btn-profile-menu').addEventListener('click', () => {
+            hideHero(); // Ocultar hero al hacer clic en perfil
             UIService.showModal('profile');
         });
 
         document.getElementById('btn-current-location').addEventListener('click', () => {
+            hideHero(); // Ocultar hero al hacer clic en ubicación actual
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition((position) => {
                     centerLocation = { lat: position.coords.latitude, lng: position.coords.longitude };
@@ -84,15 +110,36 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // 4. Listener para el formulario de registro
+        // 5. Listener para el formulario de registro
         document.getElementById('register-form').addEventListener('submit', handleRegisterFormSubmit);
 
-        // 5. Listener para el botón de cambiar ubicación
-        document.getElementById('change-location-btn').addEventListener('click', () => {
-            MapService.enterLocationSelectionMode(handleMapClick);
+        // 6. Listener para el botón de cerrar panel de detalles
+        document.getElementById('close-detail-panel').addEventListener('click', () => {
+            UIService.hideDetailPanel();
         });
 
-        // 6. Obtener ubicación del usuario y cargar datos iniciales
+        // 8. Listener para el botón de cambiar ubicación
+        document.getElementById('change-location-btn').addEventListener('click', () => {
+            const isMobile = window.innerWidth < 768;
+            isSelectingFromPublishPanel = true; // Marcar que estamos seleccionando desde publish panel
+            
+            // En móvil, cerrar el panel para mostrar el mapa
+            if (isMobile) {
+                UIService.closeAllPanels();
+                // Mostrar instrucción inmediata por más tiempo
+                UIService.showNotification('🗺️ Toca en el mapa para seleccionar la ubicación de tu servicio.', 'info', 6000);
+                // Pequeño delay para que la animación de cierre termine
+                setTimeout(() => {
+                    MapService.enterLocationSelectionMode(handleMapClick);
+                }, 300);
+            } else {
+                // En desktop, mantener el panel abierto y mostrar instrucción
+                UIService.showNotification('🗺️ Haz clic en el mapa para seleccionar la ubicación.', 'info', 5000);
+                MapService.enterLocationSelectionMode(handleMapClick);
+            }
+        });
+
+        // 7. Obtener ubicación del usuario y cargar datos iniciales
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition((position) => {
                 userLocation = { lat: position.coords.latitude, lng: position.coords.longitude };
@@ -110,11 +157,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // --- Carga Inicial UI ---
         UIService.hideAllModals();
-
-        // 7. Listener para el menú hamburguesa
-        document.getElementById('hamburger-menu').addEventListener('click', () => {
-            document.querySelector('.main-header').classList.toggle('nav-open');
-        });
 
         // Hero CTA handlers (puedes integrarlo en tu init principal)
         const hero = document.querySelector('.map-hero');
@@ -150,13 +192,16 @@ document.addEventListener('DOMContentLoaded', () => {
             // Muestra los servicios de la categoría seleccionada
             UIService.renderServiceCategories(handleCategoryClick, handleBackToCategories, item);
             activeCategory = null; // Aún no hay una selección final
+            UIService.updateFilterStatus(null);
         } else {
             // Es un servicio final, realiza la búsqueda
             if (activeCategory === item) {
                 activeCategory = null; // Deseleccionar si se hace clic de nuevo
+                UIService.updateFilterStatus(null);
                 performSearch('');
             } else {
                 activeCategory = item;
+                UIService.updateFilterStatus(item);
                 performSearch(item);
             }
         }
@@ -168,11 +213,15 @@ document.addEventListener('DOMContentLoaded', () => {
         UIService.renderServiceCategories(handleCategoryClick, handleBackToCategories);
         activeCategory = null;
         UIService.updateActiveCategory(activeCategory);
+        // Desactivar filtro y realizar nueva búsqueda
+        UIService.updateFilterStatus(null);
+        performSearch(''); // Búsqueda sin filtros
     };
 
     const handleSearch = (searchTerm) => {
         activeCategory = null;
         UIService.updateActiveCategory(null);
+        UIService.updateFilterStatus(null);
         performSearch(searchTerm);
     };
 
@@ -180,19 +229,25 @@ document.addEventListener('DOMContentLoaded', () => {
         selectedLocation = { lat, lng };
         MapService.showTempMarker(lat, lng);
         const address = await ApiService.getStreetAddress(lat, lng);
-        UIService.updateAddressInput(address);
+        UIService.updateAddressInput(address, isSelectingFromPublishPanel);
         MapService.exitLocationSelectionMode();
+        isSelectingFromPublishPanel = false; // Reset flag después de usar
     };
 
     const handleCloseModal = () => {
         UIService.hideAllModals();
         MapService.exitLocationSelectionMode();
+        isSelectingFromPublishPanel = false; // Reset flag al cerrar modal
     };
 
     const handleRegisterFormSubmit = (e) => {
         e.preventDefault();
         const form = e.target;
         const serviceName = form.querySelector('#service-name').value;
+        const serviceDescription = form.querySelector('#service-description').value;
+        const servicePrice = form.querySelector('#service-price').value;
+        const serviceSchedule = form.querySelector('#service-schedule').value;
+        const serviceContact = form.querySelector('#service-contact').value;
         const userEmail = form.querySelector('#user-email').value;
         const serviceAddress = form.querySelector('#service-address').value;
         const category = form.querySelector('#service-subcategory').value;
@@ -205,15 +260,28 @@ document.addEventListener('DOMContentLoaded', () => {
         const newUser = {
             id: Date.now(),
             serviceName,
+            description: serviceDescription,
+            price: servicePrice,
+            schedule: serviceSchedule,
+            contact: serviceContact,
             email: userEmail,
             address: serviceAddress,
             category,
-            location: selectedLocation
+            location: selectedLocation,
+            rating: 4.2 // Placeholder para valoraciones futuras
         };
 
         DataService.addUser(newUser);
         performSearch(''); // Actualiza la lista y el mapa
-        UIService.showNotification('¡Servicio publicado con éxito!', 'success');
+        
+        // Mensaje diferenciado para móvil vs desktop
+        const isMobile = window.innerWidth < 768;
+        if (isMobile) {
+            UIService.showNotification('✅ ¡Servicio publicado! Tu servicio ya está visible en el mapa.', 'success', 5000);
+        } else {
+            UIService.showNotification('¡Servicio publicado con éxito!', 'success');
+        }
+        
         UIService.resetRegisterForm();
         UIService.togglePublishPanel();
     };
@@ -221,3 +289,31 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Inicialización de la App ---
     initApp();
 });
+
+// --- Funciones Globales para Mapas ---
+
+/**
+ * Función global para mostrar detalles de un servicio desde popups del mapa.
+ * @param {string} serviceId - ID del servicio a mostrar.
+ */
+window.showServiceDetails = (serviceId) => {
+    // Buscar el servicio en los datos
+    const services = DataService.getUsers();
+    
+    // SOLUCION: Convertir el serviceId recibido a número si es necesario
+    const searchId = typeof serviceId === 'string' ? parseInt(serviceId, 10) : serviceId;
+    
+    const service = services.find(s => s.id === searchId);
+    
+    if (service) {
+        UIService.showDetailPanel(service);
+        
+        // Opcional: cerrar el popup del mapa para mejor UX
+        if (window.map && window.map.closePopup) {
+            window.map.closePopup();
+        }
+    } else {
+        console.error('Service not found with ID:', searchId);
+        console.error('Available IDs:', services.map(s => s.id));
+    }
+};
