@@ -22,3 +22,57 @@ export const haversineDistance = (coords1, coords2) => {
 
     return R * c;
 };
+
+/**
+ * Formatea un precio numérico con separadores de miles y modalidad
+ * @param {number} price - Precio numérico
+ * @param {string} modality - Modalidad de cobro
+ * @returns {string} - Precio formateado
+ */
+export const formatPrice = (price, modality) => {
+    if (!price || price === 0) {
+        return 'Precio a consultar';
+    }
+
+    // Formatear número con separadores de miles
+    const formattedNumber = price.toLocaleString('es-CL');
+    
+    // Mapear modalidades a texto legible
+    const modalityText = {
+        'por_hora': '/hora',
+        'por_servicio': '',
+        'por_dia': '/día',
+        'por_mes': '/mes',
+        'por_proyecto': '',
+        'consultar': ''
+    };
+
+    const modalitySuffix = modalityText[modality] || '';
+    
+    // Si es "por_servicio" o "por_proyecto", agregar "Desde"
+    const prefix = (modality === 'por_servicio' || modality === 'por_proyecto') ? 'Desde ' : '';
+    
+    if (modality === 'consultar') {
+        return 'A consultar';
+    }
+    
+    return `${prefix}$${formattedNumber}${modalitySuffix}`;
+};
+
+/**
+ * Obtiene el nombre legible de una modalidad de precio
+ * @param {string} modality - Modalidad de cobro
+ * @returns {string} - Nombre legible
+ */
+export const getModalityLabel = (modality) => {
+    const labels = {
+        'por_hora': 'Por hora',
+        'por_servicio': 'Por servicio completo',
+        'por_dia': 'Por día',
+        'por_mes': 'Por mes',
+        'por_proyecto': 'Por proyecto',
+        'consultar': 'A consultar'
+    };
+    
+    return labels[modality] || 'Por servicio';
+};

@@ -4,7 +4,8 @@ import { SERVICE_CATEGORIES } from './config.js';
 import * as DataService from './dataService.js';
 import * as ApiService from './apiService.js';
 import * as MapService from './mapService.js';
-import { haversineDistance } from './utils.js';
+import { haversineDistance, formatPrice, getModalityLabel } from './utils.js';
+import { validatePhoneNumber, getPublicContactInfo, revealContactInfo, formatPhoneNumber, generateWhatsAppURL } from './contactService.js';
 
 // --- Referencias a elementos del DOM ---
 const modals = {
@@ -270,6 +271,11 @@ export const updateFilterStatus = (filterName) => {
  * @param {Array} users - La lista de usuarios a mostrar.
  */
 export const renderSearchResults = (users) => {
+    console.log('🔍 renderSearchResults - usuarios recibidos:', users.length);
+    if (users.length > 0) {
+        console.log('🔍 Primer usuario:', users[0]);
+    }
+    
     nearbyUsersList.innerHTML = ''; // Limpiar lista
 
     // Actualizar el contador de resultados
@@ -333,7 +339,13 @@ export const renderSearchResults = (users) => {
         if (user.price) {
             const price = document.createElement('span');
             price.className = 'service-price-compact';
-            price.textContent = user.price;
+            const formattedPrice = formatPrice(user.price, user.priceModality);
+            console.log(`💰 Formato precio para ${user.serviceName}:`, {
+                price: user.price,
+                priceModality: user.priceModality,
+                formatted: formattedPrice
+            });
+            price.textContent = formattedPrice;
             mainInfo.appendChild(price);
         }
 
@@ -422,6 +434,16 @@ export const updateAddressInput = (address, fromPublishPanel = false) => {
  */
 export const resetRegisterForm = () => {
     registerForm.reset();
+    // Restablecer valores por defecto después del reset
+    const emailInput = document.getElementById('user-email');
+    const phoneInput = document.getElementById('user-phone');
+    const whatsappCheckbox = document.getElementById('whatsapp-available');
+    const priceModalitySelect = document.getElementById('price-modality');
+    
+    if (emailInput) emailInput.value = 'contacto@ejemplo.com';
+    if (phoneInput) phoneInput.value = '+56912345678';
+    if (whatsappCheckbox) whatsappCheckbox.checked = true;
+    if (priceModalitySelect) priceModalitySelect.value = 'por_servicio';
 };
 
 /**
@@ -586,17 +608,15 @@ const renderServiceDetails = (service) => {
 
         ${service.price ? `
         <div class="service-detail-price">
-            💰 ${service.price}
+            💰 ${formatPrice(service.price, service.priceModality)}
         </div>
         ` : ''}
 
         <div class="service-detail-section">
-            <h4>📍 Ubicación y Contacto</h4>
+            <h4>📍 Ubicación</h4>
             <div class="service-detail-highlight">
                 <p class="service-detail-text"><strong>Dirección:</strong> ${service.address || 'No especificada'}</p>
                 ${service.distance ? `<p class="service-detail-text"><strong>Distancia:</strong> ${service.distance.toFixed(1)} km</p>` : ''}
-                ${service.phone ? `<p class="service-detail-text"><strong>Teléfono:</strong> ${service.phone}</p>` : ''}
-                ${service.email ? `<p class="service-detail-text"><strong>Email:</strong> ${service.email}</p>` : ''}
             </div>
         </div>
 
@@ -641,21 +661,263 @@ const renderServiceDetails = (service) => {
         ` : ''}
 
         <div class="service-detail-actions">
-            ${service.phone ? `
-            <a href="tel:${service.phone}" class="detail-action-btn primary">
-                📞 Llamar
-            </a>
-            ` : ''}
-            ${service.whatsapp ? `
-            <a href="https://wa.me/${service.whatsapp}" target="_blank" class="detail-action-btn secondary">
-                💬 WhatsApp
-            </a>
-            ` : ''}
-            ${(service.email || service.contact) ? `
-            <a href="mailto:${service.email || service.contact}" class="detail-action-btn primary">
-                ✉️ Contactar
-            </a>
-            ` : ''}
+            ${renderFullContact(service)}
         </div>
     `;
+};
+
+// --- Estados de Carga ---
+
+/**
+ * Muestra un estado de carga para una operación específica
+ * @param {string} operation - Tipo de operación ('search', 'publish', 'details')
+ */
+export const showLoadingState = (operation) => {
+    switch (operation) {
+        case 'search':
+            // Mostrar loading en la lista de resultados
+            if (nearbyUsersList) {
+                nearbyUsersList.innerHTML = `
+                    <div class="loading-state">
+                        <div class="loading-spinner"></div>
+                        <p>Buscando servicios...</p>
+                    </div>
+                `;
+            }
+            break;
+            
+        case 'publish':
+            // Deshabilitar el botón de envío y mostrar loading
+            const submitBtn = document.querySelector('#register-form button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = `
+                    <div class="loading-spinner-small"></div>
+                    Publicando...
+                `;
+            }
+            break;
+            
+        case 'details':
+            // Mostrar loading en el panel de detalles
+            const detailContent = document.querySelector('.detail-panel-content');
+            if (detailContent) {
+                detailContent.innerHTML = `
+                    <div class="loading-state">
+                        <div class="loading-spinner"></div>
+                        <p>Cargando detalles...</p>
+                    </div>
+                `;
+            }
+            break;
+    }
+};
+
+/**
+ * Oculta el estado de carga para una operación específica
+ * @param {string} operation - Tipo de operación ('search', 'publish', 'details')
+ */
+export const hideLoadingState = (operation) => {
+    switch (operation) {
+        case 'search':
+            // El contenido se reemplazará con los resultados de búsqueda
+            break;
+            
+        case 'publish':
+            // Restaurar el botón de envío
+            const submitBtn = document.querySelector('#register-form button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = 'Publicar Servicio';
+            }
+            break;
+            
+        case 'details':
+            // El contenido se reemplazará con los detalles del servicio
+            break;
+    }
+};
+
+// --- Gestión del Formulario de Contacto ---
+
+/**
+ * Inicializa los event listeners para el formulario de contacto mejorado
+ */
+export const initContactFormListeners = () => {
+    // Listeners para cambio de método de contacto
+    const emailRadio = document.getElementById('contact-email');
+    const phoneRadio = document.getElementById('contact-phone');
+    const emailSection = document.getElementById('email-contact-section');
+    const phoneSection = document.getElementById('phone-contact-section');
+
+    if (emailRadio && phoneRadio && emailSection && phoneSection) {
+        emailRadio.addEventListener('change', () => {
+            if (emailRadio.checked) {
+                emailSection.classList.remove('hidden');
+                phoneSection.classList.add('hidden');
+                clearPhoneValidation();
+            }
+        });
+
+        phoneRadio.addEventListener('change', () => {
+            if (phoneRadio.checked) {
+                phoneSection.classList.remove('hidden');
+                emailSection.classList.add('hidden');
+            }
+        });
+    }
+
+    // Validación en tiempo real para el teléfono
+    const phoneInput = document.getElementById('user-phone');
+    const phoneValidationDiv = document.getElementById('phone-validation');
+
+    if (phoneInput && phoneValidationDiv) {
+        const validatePhone = () => {
+            const fullPhoneNumber = phoneInput.value.trim();
+            
+            if (fullPhoneNumber) {
+                phoneValidationDiv.className = 'validation-message checking';
+                phoneValidationDiv.textContent = 'Validando...';
+                
+                // Pequeño delay para simular validación
+                setTimeout(() => {
+                    // Extraer código de país y número
+                    const phoneMatch = fullPhoneNumber.match(/^(\+\d{1,3})(\d+)$/);
+                    
+                    if (!phoneMatch) {
+                        phoneValidationDiv.className = 'validation-message invalid';
+                        phoneValidationDiv.textContent = 'Debe comenzar con código de país. Ej: +56912345678';
+                        return;
+                    }
+                    
+                    const [, countryCode, phoneNumber] = phoneMatch;
+                    const validation = validatePhoneNumber(countryCode, phoneNumber);
+                    phoneValidationDiv.className = `validation-message ${validation.isValid ? 'valid' : 'invalid'}`;
+                    phoneValidationDiv.textContent = validation.message;
+                }, 300);
+            } else {
+                clearPhoneValidation();
+            }
+        };
+
+        phoneInput.addEventListener('input', validatePhone);
+    }
+};
+
+/**
+ * Limpia la validación del teléfono
+ */
+function clearPhoneValidation() {
+    const phoneValidationDiv = document.getElementById('phone-validation');
+    if (phoneValidationDiv) {
+        phoneValidationDiv.className = 'validation-message';
+        phoneValidationDiv.textContent = '';
+    }
+}
+
+/**
+ * Extrae los datos de contacto del formulario
+ * @returns {Object} - Datos de contacto
+ */
+export const getContactDataFromForm = () => {
+    const emailRadio = document.getElementById('contact-email');
+    const phoneRadio = document.getElementById('contact-phone');
+    const emailInput = document.getElementById('user-email');
+    const phoneInput = document.getElementById('user-phone');
+    const whatsappCheckbox = document.getElementById('whatsapp-available');
+
+    const contactData = {
+        method: emailRadio?.checked ? 'email' : 'phone'
+    };
+
+    if (contactData.method === 'email') {
+        contactData.email = emailInput?.value?.trim() || '';
+    } else {
+        const fullPhoneNumber = phoneInput?.value?.trim() || '';
+        
+        // Extraer código de país y número del input completo
+        const phoneMatch = fullPhoneNumber.match(/^(\+\d{1,3})(\d+)$/);
+        
+        if (phoneMatch) {
+            const [, countryCode, phoneNumber] = phoneMatch;
+            contactData.phone = phoneNumber;
+            contactData.countryCode = countryCode;
+        } else {
+            // Si no tiene formato válido, guardar todo como phone
+            contactData.phone = fullPhoneNumber.replace(/\D/g, '');
+            contactData.countryCode = '+56'; // Código por defecto
+        }
+        
+        contactData.whatsappAvailable = whatsappCheckbox?.checked || false;
+    }
+
+    return contactData;
+};
+
+/**
+ * Renderiza la información de contacto en las cards (sin datos sensibles)
+ * Solo muestra que hay un método de contacto disponible
+ * @param {Object} service - Datos del servicio
+ * @returns {string} - HTML de la información de contacto
+ */
+export const renderPublicContact = (service) => {
+    if (!service.contactMethod) {
+        return '<p class="contact-info">📞 Contactar</p>';
+    }
+
+    const publicInfo = getPublicContactInfo(service.contactMethod);
+    return `<p class="contact-info">${publicInfo.icon} ${publicInfo.label}</p>`;
+};
+
+/**
+ * Renderiza botones de contacto que redirigen directamente (sin mostrar datos)
+ * Los datos se revelan solo al hacer clic en el botón correspondiente
+ * @param {Object} service - Datos del servicio
+ * @returns {string} - HTML de los botones de contacto
+ */
+export const renderFullContact = (service) => {
+    console.log('🔍 renderFullContact - Servicio:', service);
+    console.log('🔍 renderFullContact - contactMethod:', service.contactMethod);
+    
+    if (!service.contactMethod) {
+        console.warn('⚠️ No hay contactMethod en el servicio:', service.id, service.serviceName);
+        return '<p class="no-contact-available">No hay información de contacto disponible.</p>';
+    }
+
+    const fullContact = revealContactInfo(service.contactMethod);
+    let contactHTML = '<div class="contact-actions">';
+
+    if (fullContact.method === 'email') {
+        contactHTML += `
+            <a href="mailto:${fullContact.email}" class="detail-action-btn primary" title="Se abrirá tu cliente de email">
+                ✉️ Contactar por Email
+            </a>
+            <p class="contact-hint">Al hacer clic se abrirá tu aplicación de correo</p>
+        `;
+    } else {
+        const fullPhoneNumber = `${fullContact.countryCode}${fullContact.phone}`;
+        
+        contactHTML += `
+            <a href="tel:${fullPhoneNumber}" class="detail-action-btn primary" title="Llamar ahora">
+                📞 Llamar Ahora
+            </a>
+        `;
+        
+        if (fullContact.whatsappAvailable) {
+            const whatsappURL = generateWhatsAppURL(fullPhoneNumber, 
+                `Hola! Vi tu servicio "${service.serviceName}" en GeoRed y me interesa obtener más información.`);
+            contactHTML += `
+                <a href="${whatsappURL}" target="_blank" class="detail-action-btn secondary" title="Abrir WhatsApp">
+                    💬 Contactar por WhatsApp
+                </a>
+            `;
+        }
+        
+        contactHTML += `
+            <p class="contact-hint">Al hacer clic se ${fullContact.whatsappAvailable ? 'llamará o abrirá WhatsApp' : 'iniciará la llamada'}</p>
+        `;
+    }
+
+    contactHTML += '</div>';
+    return contactHTML;
 };

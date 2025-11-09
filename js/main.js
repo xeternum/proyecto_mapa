@@ -6,6 +6,7 @@ import * as MapService from './mapService.js';
 import * as UIService from './uiService.js';
 import * as ApiService from './apiService.js';
 import * as SearchService from './searchService.js';
+import { validateServiceData, validateSearchFilters, sanitizeServiceData } from './validationService.js';
 
 import { haversineDistance } from './utils.js';
 
@@ -36,22 +37,44 @@ document.addEventListener('DOMContentLoaded', () => {
         UIService.updateFilterStatus(null);
     };
 
-    const performSearch = (searchTerm) => {
-        let publications = SearchService.searchUsers(searchTerm);
-        
-        // Si tenemos la ubicación del usuario, calculamos las distancias
-        if (userLocation) {
-            publications.forEach(pub => {
-                if (pub.location) {
-                    pub.distance = haversineDistance(userLocation, pub.location);
-                }
-            });
-            // Opcional: ordenar por distancia
-            publications.sort((a, b) => a.distance - b.distance);
-        }
+    const performSearch = async (searchTerm) => {
+        try {
+            // Mostrar estado de carga
+            UIService.showLoadingState('search');
+            
+            // Validar filtros de búsqueda
+            const filters = { search: searchTerm, category: activeCategory };
+            const validation = validateSearchFilters(filters);
+            
+            if (!validation.isValid) {
+                UIService.showNotification(validation.errors.join(' '), 'error');
+                UIService.hideLoadingState('search');
+                return;
+            }
+            
+            // Obtener servicios desde API
+            const publications = await ApiService.getServices(filters);
+            
+            // Si tenemos la ubicación del usuario, calculamos las distancias
+            if (userLocation) {
+                publications.forEach(pub => {
+                    if (pub.location) {
+                        pub.distance = haversineDistance(userLocation, pub.location);
+                    }
+                });
+                // Opcional: ordenar por distancia
+                publications.sort((a, b) => a.distance - b.distance);
+            }
 
-        UIService.renderSearchResults(publications);
-        MapService.renderMarkers(publications);
+            UIService.renderSearchResults(publications);
+            MapService.renderMarkers(publications);
+            UIService.hideLoadingState('search');
+            
+        } catch (error) {
+            console.error('Error en performSearch:', error);
+            UIService.showNotification('Error al cargar los servicios. Inténtalo de nuevo.', 'error');
+            UIService.hideLoadingState('search');
+        }
     };
 
     const initApp = () => {
@@ -66,6 +89,9 @@ document.addEventListener('DOMContentLoaded', () => {
             onSearchInput: handleSearch
         };
         UIService.initEventListeners(uiCallbacks);
+        
+        // Inicializar listeners del formulario de contacto
+        UIService.initContactFormListeners();
 
         // 3. Configurar callback para cierre de search panel
         UIService.setOnSearchPanelCloseCallback(resetSearchState);
@@ -240,50 +266,95 @@ document.addEventListener('DOMContentLoaded', () => {
         isSelectingFromPublishPanel = false; // Reset flag al cerrar modal
     };
 
-    const handleRegisterFormSubmit = (e) => {
+    const handleRegisterFormSubmit = async (e) => {
         e.preventDefault();
-        const form = e.target;
-        const serviceName = form.querySelector('#service-name').value;
-        const serviceDescription = form.querySelector('#service-description').value;
-        const servicePrice = form.querySelector('#service-price').value;
-        const serviceSchedule = form.querySelector('#service-schedule').value;
-        const serviceContact = form.querySelector('#service-contact').value;
-        const userEmail = form.querySelector('#user-email').value;
-        const serviceAddress = form.querySelector('#service-address').value;
-        const category = form.querySelector('#service-subcategory').value;
-
-        if (!selectedLocation) {
-            UIService.showNotification('Error: No se ha seleccionado ubicación en el mapa.', 'error');
-            return;
-        }
-
-        const newUser = {
-            id: Date.now(),
-            serviceName,
-            description: serviceDescription,
-            price: servicePrice,
-            schedule: serviceSchedule,
-            contact: serviceContact,
-            email: userEmail,
-            address: serviceAddress,
-            category,
-            location: selectedLocation,
-            rating: 4.2 // Placeholder para valoraciones futuras
-        };
-
-        DataService.addUser(newUser);
-        performSearch(''); // Actualiza la lista y el mapa
         
-        // Mensaje diferenciado para móvil vs desktop
-        const isMobile = window.innerWidth < 768;
-        if (isMobile) {
-            UIService.showNotification('✅ ¡Servicio publicado! Tu servicio ya está visible en el mapa.', 'success', 5000);
-        } else {
-            UIService.showNotification('¡Servicio publicado con éxito!', 'success');
+        try {
+            const form = e.target;
+            const serviceName = form.querySelector('#service-name').value;
+            const serviceDescription = form.querySelector('#service-description').value;
+            const priceValue = form.querySelector('#service-price').value;
+            const servicePrice = priceValue ? parseFloat(priceValue) : null;
+            const priceModality = form.querySelector('#price-modality').value;
+            const serviceSchedule = form.querySelector('#service-schedule').value;
+            const serviceAddress = form.querySelector('#service-address').value;
+            const category = form.querySelector('#service-subcategory').value;
+
+            if (!selectedLocation) {
+                UIService.showNotification('Error: No se ha seleccionado ubicación en el mapa.', 'error');
+                return;
+            }
+
+            // Obtener datos de contacto del nuevo formulario
+            const contactMethod = UIService.getContactDataFromForm();
+
+            // Crear objeto de datos del servicio
+            const serviceData = {
+                serviceName,
+                description: serviceDescription,
+                price: servicePrice,
+                priceModality: priceModality,
+                schedule: serviceSchedule,
+                address: serviceAddress,
+                category,
+                location: selectedLocation,
+                contactMethod: contactMethod
+            };
+
+            // DEBUG: Log para ver los datos antes de sanitizar
+            console.log('🔍 Datos ANTES de sanitizar:', {
+                price: servicePrice,
+                priceType: typeof servicePrice,
+                priceModality: priceModality,
+                priceModalityType: typeof priceModality,
+                contactMethod: contactMethod
+            });
+
+            // Sanitizar datos
+            const sanitizedData = sanitizeServiceData(serviceData);
+
+            // DEBUG: Log para ver los datos después de sanitizar
+            console.log('🔍 Datos DESPUÉS de sanitizar:', {
+                price: sanitizedData.price,
+                priceType: typeof sanitizedData.price,
+                priceModality: sanitizedData.priceModality,
+                priceModalityType: typeof sanitizedData.priceModality
+            });
+
+            // Validar datos
+            const validation = validateServiceData(sanitizedData);
+            if (!validation.isValid) {
+                console.error('❌ Errores de validación:', validation.errors);
+                UIService.showNotification(validation.errors.join(' '), 'error');
+                return;
+            }
+
+            // Mostrar estado de carga
+            UIService.showLoadingState('publish');
+
+            // Crear servicio en el backend
+            const newService = await ApiService.createService(sanitizedData);
+
+            // Actualizar la interfaz
+            await performSearch(''); // Actualiza la lista y el mapa
+            
+            // Mensaje diferenciado para móvil vs desktop
+            const isMobile = window.innerWidth < 768;
+            if (isMobile) {
+                UIService.showNotification('✅ ¡Servicio publicado! Tu servicio ya está visible en el mapa.', 'success', 5000);
+            } else {
+                UIService.showNotification('¡Servicio publicado con éxito!', 'success');
+            }
+            
+            UIService.resetRegisterForm();
+            UIService.togglePublishPanel();
+            UIService.hideLoadingState('publish');
+            
+        } catch (error) {
+            console.error('Error al crear servicio:', error);
+            UIService.showNotification(error.message || 'Error al publicar el servicio. Inténtalo de nuevo.', 'error');
+            UIService.hideLoadingState('publish');
         }
-        
-        UIService.resetRegisterForm();
-        UIService.togglePublishPanel();
     };
 
     // --- Inicialización de la App ---
@@ -296,24 +367,29 @@ document.addEventListener('DOMContentLoaded', () => {
  * Función global para mostrar detalles de un servicio desde popups del mapa.
  * @param {string} serviceId - ID del servicio a mostrar.
  */
-window.showServiceDetails = (serviceId) => {
-    // Buscar el servicio en los datos
-    const services = DataService.getUsers();
-    
-    // SOLUCION: Convertir el serviceId recibido a número si es necesario
-    const searchId = typeof serviceId === 'string' ? parseInt(serviceId, 10) : serviceId;
-    
-    const service = services.find(s => s.id === searchId);
-    
-    if (service) {
-        UIService.showDetailPanel(service);
+window.showServiceDetails = async (serviceId) => {
+    try {
+        // Buscar el servicio en los datos usando la API
+        const services = await ApiService.getServices({});
         
-        // Opcional: cerrar el popup del mapa para mejor UX
-        if (window.map && window.map.closePopup) {
-            window.map.closePopup();
+        // SOLUCION: Convertir el serviceId recibido a número si es necesario
+        const searchId = typeof serviceId === 'string' ? parseInt(serviceId, 10) : serviceId;
+        
+        const service = services.find(s => s.id === searchId);
+        
+        if (service) {
+            UIService.showDetailPanel(service);
+            
+            // Opcional: cerrar el popup del mapa para mejor UX
+            if (window.map && window.map.closePopup) {
+                window.map.closePopup();
+            }
+        } else {
+            console.error('Service not found with ID:', searchId);
+            console.error('Available IDs:', services.map(s => s.id));
         }
-    } else {
-        console.error('Service not found with ID:', searchId);
-        console.error('Available IDs:', services.map(s => s.id));
+    } catch (error) {
+        console.error('Error loading service details:', error);
+        UIService.showNotification('Error al cargar los detalles del servicio.', 'error');
     }
 };

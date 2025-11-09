@@ -1692,3 +1692,311 @@ main {
         text-align: center;
     }
 }
+
+/* Estados de Carga */
+.loading-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    color: #6B7280;
+    text-align: center;
+}
+
+.loading-state p {
+    margin-top: 1rem;
+    font-size: 0.875rem;
+}
+
+.loading-spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid #E5E7EB;
+    border-top: 3px solid #2563EB;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+.loading-spinner-small {
+    width: 16px;
+    height: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top: 2px solid #ffffff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    display: inline-block;
+    margin-right: 8px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Estados de botones con loading */
+button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+button:disabled .loading-spinner-small {
+    border-top-color: rgba(255, 255, 255, 0.8);
+}
+
+/* Estilos para el nuevo sistema de contacto */
+.contact-method-selector {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+/* Radio buttons como botones clickeables */
+.radio-button-option {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.875rem 1.25rem;
+    border: 2px solid #E5E7EB;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex: 1;
+    background-color: #ffffff;
+    user-select: none;
+}
+
+.radio-button-option:hover {
+    border-color: #3B82F6;
+    background-color: #F8FAFC;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.radio-button-option input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.radio-button-content {
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: #374151;
+    transition: color 0.2s ease;
+}
+
+.radio-button-option:has(input[type="radio"]:checked) {
+    border-color: #2563EB;
+    background: linear-gradient(135deg, #EFF6FF, #DBEAFE);
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.15);
+}
+
+.radio-button-option:has(input[type="radio"]:checked) .radio-button-content {
+    color: #2563EB;
+    font-weight: 600;
+}
+
+.radio-button-option:active {
+    transform: translateY(0);
+}
+
+.contact-section {
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.contact-section.hidden {
+    display: none;
+}
+
+/* Checkbox como botón clickeable */
+.checkbox-option {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+    border: 2px solid #E5E7EB;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background-color: #ffffff;
+    user-select: none;
+    width: fit-content;
+    min-width: 280px;
+}
+
+.checkbox-option:hover {
+    border-color: #10B981;
+    background-color: #F0FDF4;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.checkbox-option input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    margin: 0;
+    flex-shrink: 0;
+}
+
+.checkbox-content {
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: #374151;
+    transition: color 0.2s ease;
+}
+
+.checkbox-option:has(input[type="checkbox"]:checked) {
+    border-color: #10B981;
+    background: linear-gradient(135deg, #ECFDF5, #D1FAE5);
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.15);
+}
+
+.checkbox-option:has(input[type="checkbox"]:checked) .checkbox-content {
+    color: #059669;
+    font-weight: 600;
+}
+
+.checkbox-option:active {
+    transform: translateY(0);
+}
+
+.form-hint {
+    display: block;
+    font-size: 0.75rem;
+    color: #6B7280;
+    margin-top: 0.25rem;
+    font-style: italic;
+}
+
+/* Input de precio con símbolo de moneda */
+.price-input-group {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.currency-symbol {
+    position: absolute;
+    left: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    color: #6B7280;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.price-input-group input[type="number"] {
+    padding-left: 32px;
+    width: 100%;
+}
+
+.price-input-group input[type="number"]::-webkit-inner-spin-button,
+.price-input-group input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.price-input-group input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+.validation-message {
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    display: none;
+}
+
+.validation-message.valid {
+    display: block;
+    background-color: #ECFDF5;
+    color: #065F46;
+    border: 1px solid #A7F3D0;
+}
+
+.validation-message.invalid {
+    display: block;
+    background-color: #FEF2F2;
+    color: #991B1B;
+    border: 1px solid #FECACA;
+}
+
+.validation-message.checking {
+    display: block;
+    background-color: #FFFBEB;
+    color: #92400E;
+    border: 1px solid #FDE68A;
+}
+
+/* Responsive para método de contacto */
+@media (max-width: 768px) {
+    .contact-method-selector {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .radio-button-option {
+        padding: 1rem 1.25rem;
+    }
+    
+    .checkbox-option {
+        width: 100%;
+        min-width: auto;
+    }
+}
+
+/* Estilos para información de contacto */
+.contact-info {
+    color: #6B7280;
+    font-size: 0.875rem;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.no-contact-available {
+    color: #9CA3AF;
+    font-size: 0.875rem;
+    font-style: italic;
+    text-align: center;
+    padding: 1rem;
+}
+
+.contact-hint {
+    color: #6B7280;
+    font-size: 0.75rem;
+    margin-top: 0.5rem;
+    text-align: center;
+    font-style: italic;
+}
+
+.contact-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    align-items: stretch;
+}
+
+.contact-actions .detail-action-btn {
+    width: 100%;
+    text-align: center;
+}
+
+@media (min-width: 768px) {
+    .contact-actions {
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    
+    .contact-actions .detail-action-btn {
+        width: auto;
+        min-width: 200px;
+    }
+}

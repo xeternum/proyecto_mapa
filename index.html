@@ -86,10 +86,29 @@
                         <label for="service-description">Descripción del servicio:</label>
                         <textarea id="service-description" required placeholder="Describe tu servicio en detalle..." rows="3"></textarea>
                     </div>
+                    
+                    <!-- Sistema de Precios Mejorado -->
                     <div class="form-group">
-                        <label for="service-price">Precio desde:</label>
-                        <input type="text" id="service-price" required placeholder="Ej: Desde $15.000">
+                        <label for="service-price">Precio:</label>
+                        <div class="price-input-group">
+                            <span class="currency-symbol">$</span>
+                            <input type="number" id="service-price" required placeholder="15000" min="0" step="100">
+                        </div>
+                        <small class="form-hint">Ingresa solo el monto numérico (sin puntos ni comas)</small>
                     </div>
+                    
+                    <div class="form-group">
+                        <label for="price-modality">Modalidad de cobro:</label>
+                        <select id="price-modality" required>
+                            <option value="por_servicio" selected>Por servicio completo</option>
+                            <option value="por_hora">Por hora</option>
+                            <option value="por_dia">Por día</option>
+                            <option value="por_mes">Por mes</option>
+                            <option value="por_proyecto">Por proyecto</option>
+                            <option value="consultar">A consultar</option>
+                        </select>
+                    </div>
+                    
                     <div class="form-group">
                         <label for="service-schedule">Horario de atención:</label>
                         <select id="service-schedule" required>
@@ -101,14 +120,48 @@
                             <option value="Solo festivos">Solo festivos</option>
                         </select>
                     </div>
+                    
+                    <!-- Sección de Contacto Mejorada -->
                     <div class="form-group">
-                        <label for="service-contact">Contacto:</label>
-                        <input type="text" id="service-contact" required placeholder="Ej: +56912345678 o correo@ejemplo.com">
+                        <label>Método de contacto preferido:</label>
+                        <div class="contact-method-selector">
+                            <label class="radio-button-option" for="contact-email">
+                                <input type="radio" id="contact-email" name="contact-method" value="email" checked>
+                                <span class="radio-button-content">📧 Email</span>
+                            </label>
+                            <label class="radio-button-option" for="contact-phone">
+                                <input type="radio" id="contact-phone" name="contact-method" value="phone">
+                                <span class="radio-button-content">📱 Teléfono móvil</span>
+                            </label>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label for="user-email">Email de contacto (adicional):</label>
-                        <input type="email" id="user-email" value="ejemplo@servicio.com" required>
+
+                    <!-- Email Contact Section -->
+                    <div id="email-contact-section" class="contact-section">
+                        <div class="form-group">
+                            <label for="user-email">Email de contacto:</label>
+                            <input type="email" id="user-email" value="contacto@ejemplo.com" placeholder="tu-email@ejemplo.com">
+                            <small class="form-hint">Este email será visible solo para clientes interesados</small>
+                        </div>
                     </div>
+
+                    <!-- Phone Contact Section -->
+                    <div id="phone-contact-section" class="contact-section hidden">
+                        <div class="form-group">
+                            <label for="user-phone">Teléfono móvil:</label>
+                            <input type="tel" id="user-phone" value="+56912345678" placeholder="+56912345678" maxlength="20">
+                            <small class="form-hint">Incluye código de país. Ej: +56912345678, +34612345678</small>
+                            <div id="phone-validation" class="validation-message"></div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="checkbox-option" for="whatsapp-available">
+                                <input type="checkbox" id="whatsapp-available" checked>
+                                <span class="checkbox-content">📱 También disponible en WhatsApp</span>
+                            </label>
+                        </div>
+                    </div>
+                    
                     <div class="form-group">
                         <label>Ubicación del servicio:</label>
                         <button type="button" id="change-location-btn" class="change-location-btn">📍 Cambiar ubicación</button>
