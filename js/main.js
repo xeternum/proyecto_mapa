@@ -7,6 +7,7 @@ import * as UIService from './uiService.js';
 import * as ApiService from './apiService.js';
 import * as SearchService from './searchService.js';
 import { validateServiceData, validateSearchFilters, sanitizeServiceData } from './validationService.js';
+import * as AuthService from './authService.js';
 
 import { haversineDistance } from './utils.js';
 
@@ -209,6 +210,220 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('btn-add-service')?.click();
             });
         }
+
+        // 9. Inicializar autenticación
+        initAuthentication();
+    };
+
+    // ============================================
+    // AUTENTICACIÓN
+    // ============================================
+
+    const initAuthentication = async () => {
+        // Verificar si hay sesión activa
+        const authState = await AuthService.initAuth();
+        
+        if (authState.authenticated) {
+            updateUIForAuthenticatedUser(authState.user);
+        } else {
+            updateUIForGuestUser();
+        }
+
+        // Configurar tabs de login/registro
+        setupAuthTabs();
+        
+        // Configurar formularios
+        setupLoginForm();
+        setupRegisterForm();
+        
+        // Configurar botones de menú de usuario
+        setupUserMenuButtons();
+    };
+
+    const setupAuthTabs = () => {
+        const tabs = document.querySelectorAll('.auth-tab');
+        const loginContent = document.getElementById('login-tab-content');
+        const registerContent = document.getElementById('register-tab-content');
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const tabName = tab.dataset.tab;
+                
+                // Actualizar tabs activos
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+
+                // Mostrar contenido correspondiente
+                if (tabName === 'login') {
+                    loginContent.classList.add('active');
+                    registerContent.classList.remove('active');
+                } else {
+                    loginContent.classList.remove('active');
+                    registerContent.classList.add('active');
+                }
+            });
+        });
+    };
+
+    const setupLoginForm = () => {
+        const form = document.getElementById('login-form');
+        const errorDiv = document.getElementById('login-error');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+
+            // Limpiar error anterior
+            errorDiv.classList.add('hidden');
+            
+            // Mostrar loading
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+            submitBtn.textContent = 'Iniciando sesión...';
+            submitBtn.disabled = true;
+
+            const result = await AuthService.login(email, password);
+
+            if (result.success) {
+                UIService.showNotification('¡Sesión iniciada correctamente!', 'success');
+                updateUIForAuthenticatedUser(result.user);
+                UIService.hideModal('profile');
+                form.reset();
+            } else {
+                errorDiv.textContent = result.error || 'Error al iniciar sesión';
+                errorDiv.classList.remove('hidden');
+            }
+
+            // Restaurar botón
+            submitBtn.textContent = originalText;
+            submitBtn.disabled = false;
+        });
+    };
+
+    const setupRegisterForm = () => {
+        const form = document.getElementById('signup-form');
+        const errorDiv = document.getElementById('register-error');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const name = document.getElementById('register-name').value;
+            const email = document.getElementById('register-email').value;
+            const phone = document.getElementById('register-phone').value;
+            const password = document.getElementById('register-password').value;
+            const passwordConfirm = document.getElementById('register-password-confirm').value;
+
+            // Validar contraseñas
+            if (password !== passwordConfirm) {
+                errorDiv.textContent = 'Las contraseñas no coinciden';
+                errorDiv.classList.remove('hidden');
+                return;
+            }
+
+            // Limpiar error anterior
+            errorDiv.classList.add('hidden');
+            
+            // Mostrar loading
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+            submitBtn.textContent = 'Creando cuenta...';
+            submitBtn.disabled = true;
+
+            const userData = {
+                email,
+                password,
+                full_name: name,
+                phone: phone || undefined
+            };
+
+            const result = await AuthService.register(userData);
+
+            if (result.success) {
+                UIService.showNotification('¡Cuenta creada e iniciada sesión!', 'success');
+                updateUIForAuthenticatedUser(result.user);
+                UIService.hideModal('profile');
+                form.reset();
+            } else {
+                errorDiv.textContent = result.error || 'Error al crear la cuenta';
+                errorDiv.classList.remove('hidden');
+            }
+
+            // Restaurar botón
+            submitBtn.textContent = originalText;
+            submitBtn.disabled = false;
+        });
+    };
+
+    const setupUserMenuButtons = () => {
+        // Botón de cerrar sesión
+        document.getElementById('btn-logout')?.addEventListener('click', () => {
+            if (confirm('¿Estás seguro de que deseas cerrar sesión?')) {
+                AuthService.logout();
+            }
+        });
+
+        // Botón de mis servicios
+        document.getElementById('btn-my-services')?.addEventListener('click', async () => {
+            try {
+                UIService.hideModal('profile');
+                const services = await AuthService.getMyServices();
+                UIService.showNotification(`Tienes ${services.length} servicio(s) publicado(s)`, 'info');
+                // TODO: Mostrar lista de mis servicios
+            } catch (error) {
+                UIService.showNotification('Error al cargar tus servicios', 'error');
+            }
+        });
+
+        // Botón de mis valoraciones
+        document.getElementById('btn-my-reviews')?.addEventListener('click', async () => {
+            try {
+                UIService.hideModal('profile');
+                const reviews = await AuthService.getMyReviews();
+                UIService.showNotification(`Has realizado ${reviews.length} valoración(es)`, 'info');
+                // TODO: Mostrar lista de mis reviews
+            } catch (error) {
+                UIService.showNotification('Error al cargar tus valoraciones', 'error');
+            }
+        });
+
+        // Botón de editar perfil
+        document.getElementById('btn-edit-profile')?.addEventListener('click', () => {
+            UIService.hideModal('profile');
+            UIService.showNotification('Función de editar perfil próximamente', 'info');
+            // TODO: Implementar pantalla de editar perfil
+        });
+    };
+
+    const updateUIForAuthenticatedUser = (user) => {
+        // Actualizar botón de navegación
+        const profileBtn = document.getElementById('btn-profile-menu');
+        const profileBtnText = profileBtn.querySelector('span');
+        if (profileBtnText) {
+            profileBtnText.textContent = user.full_name.split(' ')[0]; // Primer nombre
+        }
+
+        // Mostrar sección de usuario, ocultar formularios de auth
+        document.getElementById('auth-section').classList.add('hidden');
+        document.getElementById('user-menu-section').classList.remove('hidden');
+
+        // Actualizar información del usuario en el menú
+        document.getElementById('user-display-name').textContent = user.full_name;
+        document.getElementById('user-display-email').textContent = user.email;
+    };
+
+    const updateUIForGuestUser = () => {
+        // Restaurar botón de navegación
+        const profileBtn = document.getElementById('btn-profile-menu');
+        const profileBtnText = profileBtn.querySelector('span');
+        if (profileBtnText) {
+            profileBtnText.textContent = 'Iniciar Sesión';
+        }
+
+        // Mostrar formularios de auth, ocultar sección de usuario
+        document.getElementById('auth-section').classList.remove('hidden');
+        document.getElementById('user-menu-section').classList.add('hidden');
     };
 
     // --- Handlers (manejadores de eventos) ---
@@ -268,6 +483,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const handleRegisterFormSubmit = async (e) => {
         e.preventDefault();
+        
+        // Verificar autenticación
+        if (!AuthService.isAuthenticated()) {
+            UIService.showNotification('Debes iniciar sesión para publicar un servicio', 'error');
+            UIService.togglePublishPanel(); // Cerrar panel de publicación
+            UIService.showModal('profile'); // Mostrar modal de login
+            return;
+        }
         
         try {
             const form = e.target;
@@ -332,8 +555,28 @@ document.addEventListener('DOMContentLoaded', () => {
             // Mostrar estado de carga
             UIService.showLoadingState('publish');
 
+            // Preparar datos para el backend (adaptando nombres de campos)
+            const backendData = {
+                service_name: sanitizedData.serviceName,
+                description: sanitizedData.description,
+                category: sanitizedData.category,
+                price: sanitizedData.price,
+                price_modality: sanitizedData.priceModality,
+                schedule: sanitizedData.schedule,
+                address: sanitizedData.address,
+                latitude: sanitizedData.location.lat,
+                longitude: sanitizedData.location.lng,
+                contact_method: sanitizedData.contactMethod.method,
+                contact_email: sanitizedData.contactMethod.email || null,
+                contact_phone: sanitizedData.contactMethod.phone || null,
+                contact_country_code: sanitizedData.contactMethod.countryCode || null,
+                whatsapp_available: sanitizedData.contactMethod.whatsappAvailable || false
+            };
+
+            console.log('📤 Enviando al backend:', backendData);
+
             // Crear servicio en el backend
-            const newService = await ApiService.createService(sanitizedData);
+            const newService = await AuthService.createService(backendData);
 
             // Actualizar la interfaz
             await performSearch(''); // Actualiza la lista y el mapa
