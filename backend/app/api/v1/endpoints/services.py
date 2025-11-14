@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.api.v1.endpoints.login import get_current_active_user
 from app.crud import crud_service
 from app.db.session import get_db
-from app.schemas.service import Service, ServiceCreate, ServiceUpdate
+from app.schemas.service import Service, ServiceCreate, ServiceUpdate, ServiceWithOwner
 from app.schemas.user import User
 
 router = APIRouter()
@@ -25,7 +25,7 @@ def create_service(
     )
     return service
 
-@router.get("/", response_model=List[Service])
+@router.get("/", response_model=List[ServiceWithOwner])
 def read_services(
     db: Annotated[Session, Depends(get_db)],
     skip: int = 0,
@@ -33,7 +33,7 @@ def read_services(
     category: Optional[str] = Query(None),
     search: Optional[str] = Query(None),
     active_only: bool = True
-) -> List[Service]:
+) -> List[ServiceWithOwner]:
     """
     Obtener lista de servicios con filtros opcionales
     - **category**: Filtrar por categoría
@@ -68,11 +68,11 @@ def read_my_services(
     )
     return services
 
-@router.get("/{service_id}", response_model=Service)
+@router.get("/{service_id}", response_model=ServiceWithOwner)
 def read_service(
     service_id: int,
     db: Annotated[Session, Depends(get_db)]
-) -> Service:
+) -> ServiceWithOwner:
     """
     Obtener servicio por ID
     """

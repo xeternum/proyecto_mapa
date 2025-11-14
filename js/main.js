@@ -78,9 +78,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    const initApp = () => {
+    const initApp = async () => {
         // 1. Inicializar servicios
-        DataService.initDataService(centerLocation);
+        console.log('🚀 Inicializando aplicación...');
+        
+        // Inicializar dataService y cargar servicios desde backend
+        await DataService.initDataService(centerLocation);
+        
         MapService.initMap(handleMapClick);
         SearchService.initSearchService();
 
@@ -180,6 +184,15 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             UIService.showNotification('Geolocalización no es soportada. No se mostrarán distancias.', 'error');
             performSearch(''); // Carga inicial sin distancias
+        }
+        
+        // Cargar y renderizar servicios iniciales en el mapa
+        const initialServices = DataService.getServices();
+        if (initialServices.length > 0) {
+            MapService.renderMarkers(initialServices);
+            console.log(`✅ ${initialServices.length} servicios cargados en el mapa`);
+        } else {
+            console.log('ℹ️ No hay servicios disponibles aún');
         }
 
         // --- Carga Inicial UI ---
@@ -577,8 +590,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Crear servicio en el backend
             const newService = await AuthService.createService(backendData);
+            
+            console.log('✅ Servicio creado exitosamente:', newService);
 
-            // Actualizar la interfaz
+            // Recargar servicios desde el backend para obtener la lista actualizada
+            await DataService.reloadServices();
+            
+            // Actualizar la interfaz con los servicios recién cargados
             await performSearch(''); // Actualiza la lista y el mapa
             
             // Mensaje diferenciado para móvil vs desktop

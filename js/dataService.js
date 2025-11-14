@@ -1,68 +1,100 @@
 
 // js/dataService.js
+// ============================================
+// DATA SERVICE - Gestión de servicios con backend
+// ============================================
 
 import { haversineDistance } from './utils.js';
+import { getServices as getServicesFromAPI } from './apiService.js';
 
-import { mockUsers } from './mockData.js';
-
-let users = [];
+let services = [];
 let centerLocation = null;
+let isLoadingServices = false;
 
 /**
- * Carga los usuarios desde localStorage o usa datos de mock si está vacío.
+ * Carga los servicios desde el backend
  */
-const loadUsers = () => {
-    const storedUsers = localStorage.getItem('users');
-    if (storedUsers && JSON.parse(storedUsers).length > 0) {
-        users = JSON.parse(storedUsers);
-    } else {
-        users = mockUsers;
-        saveUsers(); // Guarda los datos de mock en localStorage para futuras sesiones
+const loadServicesData = async () => {
+    if (isLoadingServices) {
+        console.log('⏳ Ya se están cargando servicios...');
+        return;
+    }
+    
+    try {
+        isLoadingServices = true;
+        console.log('📡 Cargando servicios desde backend...');
+        
+        // Obtener servicios desde el backend
+        services = await getServicesFromAPI();
+        
+        console.log(`✅ ${services.length} servicios cargados desde backend`);
+        
+    } catch (error) {
+        console.error('❌ Error cargando servicios:', error);
+        // Si falla, usar array vacío
+        services = [];
+    } finally {
+        isLoadingServices = false;
     }
 };
 
 /**
- * Guarda los usuarios en localStorage.
+ * Inicializa el servicio de datos con servicios del backend
+ * @param {object} initialCenterLocation - La ubicación central inicial
  */
-const saveUsers = () => {
-    localStorage.setItem('users', JSON.stringify(users));
-};
-
-/**
- * Inicializa el servicio de datos.
- * @param {object} initialCenterLocation - La ubicación central inicial.
- */
-export const initDataService = (initialCenterLocation) => {
-    loadUsers();
+export const initDataService = async (initialCenterLocation) => {
     centerLocation = initialCenterLocation;
+    await loadServicesData();
 };
 
 /**
- * Obtiene todos los usuarios.
- * @returns {Array} - La lista de usuarios.
+ * Recarga los servicios desde el backend
+ * Útil después de crear/actualizar/eliminar un servicio
  */
-export const getUsers = () => users;
-
-/**
- * Añade un nuevo usuario y lo guarda.
- * @param {object} user - El nuevo usuario a añadir.
- */
-export const addUser = (user) => {
-    users.push(user);
-    saveUsers();
+export const reloadServices = async () => {
+    await loadServicesData();
 };
 
 /**
- * Actualiza la ubicación central para cálculos de distancia.
- * @param {object} newCenterLocation - La nueva ubicación central.
+ * Obtiene todos los servicios
+ * @returns {Array} - La lista de servicios
+ */
+export const getUsers = () => services; // Mantiene nombre para compatibilidad
+
+/**
+ * Obtiene todos los servicios (alias más claro)
+ * @returns {Array} - La lista de servicios
+ */
+export const getServices = () => services;
+
+/**
+ * Añade un nuevo servicio localmente
+ * NOTA: Ahora los servicios se crean a través de AuthService.createService
+ * Esta función solo actualiza el array local después de la creación
+ * @param {object} service - El nuevo servicio a añadir
+ */
+export const addUser = (service) => {
+    services.push(service);
+};
+
+/**
+ * Añade un servicio (alias más claro)
+ * @param {object} service - El nuevo servicio a añadir
+ */
+export const addService = (service) => {
+    services.push(service);
+};
+
+/**
+ * Actualiza la ubicación central para cálculos de distancia
+ * @param {object} newCenterLocation - La nueva ubicación central
  */
 export const updateCenterLocation = (newCenterLocation) => {
     centerLocation = newCenterLocation;
 };
 
-
 /**
- * Obtiene la ubicación central actual.
- * @returns {object} - La ubicación central.
+ * Obtiene la ubicación central actual
+ * @returns {object} - La ubicación central
  */
 export const getCenterLocation = () => centerLocation;

@@ -1,167 +1,297 @@
 
 // js/apiService.js
+// ============================================
+// API SERVICE - Conexión con Backend Real
+// ============================================
 
 import { GEOCODING_API_URL } from './config.js';
-import { mockUsers } from './mockData.js';
 
-// Configuración de la API simulada
-const API_LATENCY = 800; // ms - simula latencia de red
-let nextId = mockUsers.length > 0 ? Math.max(...mockUsers.map(p => p.id)) + 1 : 1;
+// URL base de la API real
+const API_BASE_URL = 'http://127.0.0.1:8000/api/v1';
 
-// TODO: Reemplazar con la URL base de la API real.
-// const API_BASE_URL = 'https://tu-api.com/v1';
+// ============================================
+// HELPERS
+// ============================================
+
+function getAuthToken() {
+    return localStorage.getItem('authToken');
+}
+
+function getHeaders(includeAuth = false) {
+    const headers = {
+        'Content-Type': 'application/json',
+    };
+    
+    if (includeAuth) {
+        const token = getAuthToken();
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
+    }
+    
+    return headers;
+}
+
+async function handleResponse(response) {
+    if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: 'Error desconocido' }));
+        throw new Error(error.detail || `HTTP error! status: ${response.status}`);
+    }
+    return response.json();
+}
+
+// ============================================
+// TRANSFORMACIÓN DE DATOS
+// ============================================
 
 /**
- * Simula la obtención de servicios desde una API.
- * TODO: Reemplazar el cuerpo de esta función con una llamada `fetch` al endpoint GET /services.
+ * Transforma servicio del backend al formato frontend
+ */
+function transformServiceToFrontend(service) {
+    return {
+        id: service.id,
+        serviceName: service.service_name,
+        description: service.description,
+        category: service.category,
+        price: service.price,
+        priceModality: service.price_modality,
+        schedule: service.schedule,
+        address: service.address,
+        rating: service.rating,
+        totalReviews: service.total_reviews,
+        location: {
+            lat: service.latitude,
+            lng: service.longitude
+        },
+        contactMethod: {
+            method: service.contact_method,
+            email: service.contact_email,
+            phone: service.contact_phone,
+            countryCode: service.contact_country_code,
+            whatsappAvailable: service.whatsapp_available
+        },
+        userId: service.user_id,
+        isActive: service.is_active,
+        createdAt: service.created_at,
+        updatedAt: service.updated_at,
+        // Información del propietario (si está disponible)
+        ownerName: service.owner?.full_name || 'Usuario',
+        ownerId: service.owner?.id || service.user_id
+    };
+}
+
+// ============================================
+// FUNCIONES DE API
+// ============================================
+
+/**
+ * Obtiene servicios desde el backend con filtros opcionales
  * @param {Object} filters - Filtros para aplicar a la búsqueda
  * @returns {Promise<Array>} - Array de servicios
  */
 export async function getServices(filters = {}) {
-    console.log('🌐 API_SIM: Obteniendo servicios con filtros:', filters);
-    
-    // Simular latencia de red
-    await new Promise(resolve => setTimeout(resolve, API_LATENCY));
-
-    let results = [...mockUsers]; // Copia para evitar mutaciones
-    
-    // Aplicar filtros
-    if (filters.category) {
-        results = results.filter(s => s.category === filters.category);
+    try {
+        console.log('🌐 API: Obteniendo servicios con filtros:', filters);
+        
+        // Construir query params
+        const params = new URLSearchParams();
+        if (filters.category) params.append('category', filters.category);
+        if (filters.search) params.append('search', filters.search);
+        if (filters.skip) params.append('skip', filters.skip);
+        if (filters.limit) params.append('limit', filters.limit);
+        
+        const url = `${API_BASE_URL}/services/${params.toString() ? '?' + params.toString() : ''}`;
+        
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: getHeaders(false)
+        });
+        
+        const services = await handleResponse(response);
+        
+        // Transformar servicios al formato frontend
+        const transformedServices = services.map(transformServiceToFrontend);
+        
+        console.log(`✅ API: ${transformedServices.length} servicios obtenidos`);
+        return transformedServices;
+        
+    } catch (error) {
+        console.error('❌ Error obteniendo servicios:', error);
+        // Si el backend no está disponible, retornar array vacío en lugar de romper la app
+        return [];
     }
-    
-    if (filters.search) {
-        const searchTerm = filters.search.toLowerCase();
-        results = results.filter(s => 
-            s.serviceName.toLowerCase().includes(searchTerm) || 
-            s.description.toLowerCase().includes(searchTerm) ||
-            s.category.toLowerCase().includes(searchTerm)
-        );
-    }
-
-    if (filters.location && filters.radius) {
-        // Filtro por ubicación y radio (implementar si es necesario)
-        // results = results.filter(s => calculateDistance(s.location, filters.location) <= filters.radius);
-    }
-
-    console.log(`🌐 API_SIM: Retornando ${results.length} servicios`);
-    
-    // Retornar una copia para simular la inmutabilidad de una respuesta de API
-    return JSON.parse(JSON.stringify(results));
 }
 
 /**
- * Simula la creación de un nuevo servicio.
- * TODO: Reemplazar el cuerpo de esta función con una llamada `fetch` al endpoint POST /services.
+ * Crea un nuevo servicio en el backend
+ * NOTA: Esta función ya no se usa directamente, se usa AuthService.createService
  * @param {Object} serviceData - Datos del servicio a crear
  * @returns {Promise<Object>} - Servicio creado
  */
 export async function createService(serviceData) {
-    console.log('🌐 API_SIM: Creando servicio con datos:', serviceData);
-    
-    // Simular latencia de red (más tiempo para simular procesamiento)
-    await new Promise(resolve => setTimeout(resolve, API_LATENCY + 500));
-
-    // Simulación de validación en el "backend"
-    if (!serviceData.serviceName || !serviceData.category || !serviceData.location) {
-        return Promise.reject({ 
-            message: 'Datos incompletos. Nombre del servicio, categoría y ubicación son requeridos.',
-            code: 'VALIDATION_ERROR'
+    try {
+        console.log('🌐 API: Creando servicio con datos:', serviceData);
+        
+        // Transformar datos del frontend al formato backend
+        const backendData = {
+            service_name: serviceData.serviceName,
+            description: serviceData.description,
+            category: serviceData.category,
+            price: parseFloat(serviceData.price),
+            price_modality: serviceData.priceModality,
+            schedule: serviceData.schedule,
+            address: serviceData.address,
+            latitude: serviceData.location.lat,
+            longitude: serviceData.location.lng,
+            contact_method: serviceData.contactMethod.method,
+            contact_email: serviceData.contactMethod.email || null,
+            contact_phone: serviceData.contactMethod.phone || null,
+            contact_country_code: serviceData.contactMethod.countryCode || null,
+            whatsapp_available: serviceData.contactMethod.whatsappAvailable || false
+        };
+        
+        const response = await fetch(`${API_BASE_URL}/services/`, {
+            method: 'POST',
+            headers: getHeaders(true), // Requiere autenticación
+            body: JSON.stringify(backendData)
         });
+        
+        const service = await handleResponse(response);
+        
+        // Transformar respuesta al formato frontend
+        const transformedService = transformServiceToFrontend(service);
+        
+        console.log('✅ API: Servicio creado exitosamente:', transformedService);
+        return transformedService;
+        
+    } catch (error) {
+        console.error('❌ Error creando servicio:', error);
+        throw error;
     }
-
-    if (!serviceData.location.lat || !serviceData.location.lng) {
-        return Promise.reject({ 
-            message: 'Coordenadas de ubicación inválidas.',
-            code: 'INVALID_LOCATION'
-        });
-    }
-
-    // Crear nuevo servicio con ID único
-    const newService = {
-        id: nextId++,
-        serviceName: serviceData.serviceName,
-        description: serviceData.description || '',
-        price: serviceData.price || 0,
-        priceModality: serviceData.priceModality || 'consultar',
-        schedule: serviceData.schedule || 'No especificado',
-        address: serviceData.address || '',
-        category: serviceData.category,
-        rating: 4.0, // Rating inicial
-        location: serviceData.location,
-        contactMethod: serviceData.contactMethod || null,
-        createdAt: new Date().toISOString()
-    };
-
-    // Agregar a la "base de datos" simulada
-    mockUsers.push(newService);
-
-    console.log('✅ API_SIM: Servicio creado exitosamente:', newService);
-    
-    return newService;
 }
 
 /**
- * Simula la actualización de un servicio existente.
- * TODO: Reemplazar con llamada PUT /services/:id
+ * Actualiza un servicio existente
  * @param {number|string} serviceId - ID del servicio
  * @param {Object} updateData - Datos a actualizar
  * @returns {Promise<Object>} - Servicio actualizado
  */
 export async function updateService(serviceId, updateData) {
-    console.log('🌐 API_SIM: Actualizando servicio ID:', serviceId, 'con datos:', updateData);
-    
-    await new Promise(resolve => setTimeout(resolve, API_LATENCY));
-
-    const serviceIndex = mockUsers.findIndex(s => s.id == serviceId);
-    
-    if (serviceIndex === -1) {
-        return Promise.reject({ 
-            message: 'Servicio no encontrado.',
-            code: 'SERVICE_NOT_FOUND'
+    try {
+        console.log('🌐 API: Actualizando servicio ID:', serviceId, 'con datos:', updateData);
+        
+        // Transformar datos del frontend al formato backend
+        const backendData = {};
+        if (updateData.serviceName) backendData.service_name = updateData.serviceName;
+        if (updateData.description) backendData.description = updateData.description;
+        if (updateData.category) backendData.category = updateData.category;
+        if (updateData.price) backendData.price = parseFloat(updateData.price);
+        if (updateData.priceModality) backendData.price_modality = updateData.priceModality;
+        if (updateData.schedule) backendData.schedule = updateData.schedule;
+        if (updateData.address) backendData.address = updateData.address;
+        if (updateData.location) {
+            backendData.latitude = updateData.location.lat;
+            backendData.longitude = updateData.location.lng;
+        }
+        if (updateData.contactMethod) {
+            backendData.contact_method = updateData.contactMethod.method;
+            backendData.contact_email = updateData.contactMethod.email || null;
+            backendData.contact_phone = updateData.contactMethod.phone || null;
+            backendData.contact_country_code = updateData.contactMethod.countryCode || null;
+            backendData.whatsapp_available = updateData.contactMethod.whatsappAvailable || false;
+        }
+        
+        const response = await fetch(`${API_BASE_URL}/services/${serviceId}`, {
+            method: 'PUT',
+            headers: getHeaders(true), // Requiere autenticación
+            body: JSON.stringify(backendData)
         });
+        
+        const service = await handleResponse(response);
+        const transformedService = transformServiceToFrontend(service);
+        
+        console.log('✅ API: Servicio actualizado exitosamente:', transformedService);
+        return transformedService;
+        
+    } catch (error) {
+        console.error('❌ Error actualizando servicio:', error);
+        throw error;
     }
-
-    // Actualizar servicio
-    const updatedService = {
-        ...mockUsers[serviceIndex],
-        ...updateData,
-        updatedAt: new Date().toISOString()
-    };
-
-    mockUsers[serviceIndex] = updatedService;
-
-    console.log('✅ API_SIM: Servicio actualizado exitosamente:', updatedService);
-    
-    return updatedService;
 }
 
 /**
- * Simula la eliminación de un servicio.
- * TODO: Reemplazar con llamada DELETE /services/:id
+ * Elimina un servicio
  * @param {number|string} serviceId - ID del servicio a eliminar
  * @returns {Promise<boolean>} - true si se eliminó exitosamente
  */
 export async function deleteService(serviceId) {
-    console.log('🌐 API_SIM: Eliminando servicio ID:', serviceId);
-    
-    await new Promise(resolve => setTimeout(resolve, API_LATENCY));
-
-    const serviceIndex = mockUsers.findIndex(s => s.id == serviceId);
-    
-    if (serviceIndex === -1) {
-        return Promise.reject({ 
-            message: 'Servicio no encontrado.',
-            code: 'SERVICE_NOT_FOUND'
+    try {
+        console.log('🌐 API: Eliminando servicio ID:', serviceId);
+        
+        const response = await fetch(`${API_BASE_URL}/services/${serviceId}`, {
+            method: 'DELETE',
+            headers: getHeaders(true) // Requiere autenticación
         });
+        
+        await handleResponse(response);
+        
+        console.log('✅ API: Servicio eliminado exitosamente');
+        return true;
+        
+    } catch (error) {
+        console.error('❌ Error eliminando servicio:', error);
+        throw error;
     }
+}
 
-    // Eliminar servicio
-    mockUsers.splice(serviceIndex, 1);
+/**
+ * Obtiene un servicio específico por ID
+ * @param {number|string} serviceId - ID del servicio
+ * @returns {Promise<Object>} - Servicio
+ */
+export async function getServiceById(serviceId) {
+    try {
+        console.log('🌐 API: Obteniendo servicio ID:', serviceId);
+        
+        const response = await fetch(`${API_BASE_URL}/services/${serviceId}`, {
+            method: 'GET',
+            headers: getHeaders(false)
+        });
+        
+        const service = await handleResponse(response);
+        const transformedService = transformServiceToFrontend(service);
+        
+        console.log('✅ API: Servicio obtenido:', transformedService);
+        return transformedService;
+        
+    } catch (error) {
+        console.error('❌ Error obteniendo servicio:', error);
+        throw error;
+    }
+}
 
-    console.log('✅ API_SIM: Servicio eliminado exitosamente');
-    
-    return true;
+/**
+ * Obtiene las categorías disponibles
+ * @returns {Promise<Array>} - Array de categorías
+ */
+export async function getCategories() {
+    try {
+        console.log('🌐 API: Obteniendo categorías');
+        
+        const response = await fetch(`${API_BASE_URL}/categories/`, {
+            method: 'GET',
+            headers: getHeaders(false)
+        });
+        
+        const categories = await handleResponse(response);
+        
+        console.log('✅ API: Categorías obtenidas:', categories);
+        return categories;
+        
+    } catch (error) {
+        console.error('❌ Error obteniendo categorías:', error);
+        return []; // Retornar array vacío si falla
+    }
 }
 
 /**
