@@ -9,67 +9,42 @@ NUEVO: 10 servicios distribuidos:
 - 4 Categorías diferentes (Programador web, Carpintero, Peluquero, Pintor)
 """
 
+import os
 from app.db.init_db import init_db
 from app.db.session import SessionLocal
 from app.crud import crud_user, crud_service
 from app.schemas.user import UserCreate
 from app.schemas.service import ServiceCreate
+from app.db.base import User, Service  # modelos para conteos
 
 def delete_all_data(db):
-    """Elimina todos los datos existentes (usuarios y servicios)"""
-    print("\n🗑️  Eliminando datos existentes...")
-    
-    # Importar modelos
-    from app.db.base import User, Service, Review
-    
-    # Eliminar en orden por dependencias
-    deleted_reviews = db.query(Review).delete()
-    deleted_services = db.query(Service).delete()
-    deleted_users = db.query(User).delete()
-    
-    db.commit()
-    
-    print(f"   ✅ Eliminadas {deleted_reviews} valoraciones")
-    print(f"   ✅ Eliminados {deleted_services} servicios")
-    print(f"   ✅ Eliminados {deleted_users} usuarios")
+    """(OBSOLETO) Ya no se borran datos para mantener persistencia. Se deja por compatibilidad."""
+    print("\n⚠️  delete_all_data() está deshabilitado: no se eliminan datos.")
 
 def create_test_users(db):
-    """Crea usuarios de prueba"""
-    print("\n👥 Creando usuarios de prueba...")
-    
+    """Crea usuarios de prueba de forma idempotente (solo si no existen)."""
+    print("\n👥 Creando usuarios de prueba (idempotente)...")
     test_users = [
-        {
-            "email": "juan@example.com",
-            "password": "123456",
-            "full_name": "Juan Pérez",
-            "phone": "+56912345678"
-        },
-        {
-            "email": "maria@example.com",
-            "password": "123456",
-            "full_name": "María González",
-            "phone": "+56987654321"
-        },
-        {
-            "email": "pedro@example.com",
-            "password": "123456",
-            "full_name": "Pedro Ramírez",
-            "phone": "+56911223344"
-        }
+        {"email": "juan@example.com", "password": "123456", "full_name": "Juan Pérez", "phone": "+56912345678"},
+        {"email": "maria@example.com", "password": "123456", "full_name": "María González", "phone": "+56987654321"},
+        {"email": "pedro@example.com", "password": "123456", "full_name": "Pedro Ramírez", "phone": "+56911223344"},
     ]
-    
-    created_users = []
+    created_or_existing = []
     for user_data in test_users:
+        existing = crud_user.user.get_by_email(db, email=user_data["email"])
+        if existing:
+            print(f"   ↺ Usuario ya existe: {existing.email}")
+            created_or_existing.append(existing)
+            continue
         user_in = UserCreate(**user_data)
         user = crud_user.user.create(db, obj_in=user_in)
         print(f"   ✅ Usuario creado: {user.email}")
-        created_users.append(user)
-    
-    return created_users
+        created_or_existing.append(user)
+    return created_or_existing
 
 def create_test_services(db, users):
-    """Crea servicios de prueba"""
-    print("\n🛠️  Creando servicios de prueba...")
+    """Crea servicios de prueba de forma idempotente (solo si no existen por nombre)."""
+    print("\n🛠️  Creando servicios de prueba (idempotente)...")
     print("   📊 Distribución: 3 Electricistas + 3 Gasfíters + 4 categorías variadas")
     
     # Santiago Centro, Chile
@@ -237,50 +212,54 @@ def create_test_services(db, users):
     ]
     
     for service_data in test_services:
-        user_id = service_data.pop("user_id")
-        service_in = ServiceCreate(**service_data)
+        user_id = service_data["user_id"]
+        name = service_data["service_name"]
+        # Verificar si ya existe un servicio con el mismo nombre
+        existing = db.query(Service).filter(Service.service_name == name).first()
+        if existing:
+            print(f"   ↺ Servicio ya existe: {name} ({existing.category})")
+            continue
+        # Crear (no mutar service_data original para futuras comprobaciones)
+        service_payload = {k: v for k, v in service_data.items() if k != "user_id"}
+        service_in = ServiceCreate(**service_payload)
         service = crud_service.service.create_with_owner(db, obj_in=service_in, owner_id=user_id)
         print(f"   ✅ Servicio creado: {service.service_name} ({service.category})")
 
 def main():
-    """Función principal para inicializar la base de datos"""
+    """Inicializa la base de datos de forma idempotente (no borra lo existente)."""
     print("=" * 60)
-    print("🚀 REINICIALIZANDO BASE DE DATOS CON DATOS NUEVOS")
+    print("🚀 SEED DE BASE DE DATOS (IDEMPOTENTE)")
     print("=" * 60)
-    
+    env = os.environ.get("ENVIRONMENT", "development").lower()
+    seed_force = os.environ.get("SEED_FORCE") == "1"
     db = SessionLocal()
     try:
-        # 1. Crear tablas y categorías
+        # 1. Crear tablas y categorías (idempotente dentro de init_db)
         init_db(db)
-        
-        # 2. ELIMINAR TODOS LOS DATOS EXISTENTES
-        delete_all_data(db)
-        
-        # 3. Crear usuarios de prueba (mismos 3 usuarios)
-        users = create_test_users(db)
-        
-        # 4. Crear 10 servicios con nueva distribución
-        create_test_services(db, users)
-        
+        # 2. Comprobar si ya hay datos clave
+        user_count = db.query(User).count()
+        service_count = db.query(Service).count()
+        print(f"   📦 Estado actual: {user_count} usuarios, {service_count} servicios")
+        if env == "production" and (user_count > 0 or service_count > 0) and not seed_force:
+            print("\n🔒 Producción con datos existentes y SEED_FORCE no activo. No se crean datos de prueba.")
+        else:
+            users = create_test_users(db)
+            create_test_services(db, users)
+        # 3. Resumen final
+        final_users = db.query(User).count()
+        final_services = db.query(Service).count()
         print("\n" + "=" * 60)
-        print("✅ BASE DE DATOS REINICIALIZADA CORRECTAMENTE")
+        print("✅ SEED COMPLETADO (IDEMPOTENTE)")
         print("=" * 60)
         print("\n📊 RESUMEN DE DATOS:")
-        print("   👥 Usuarios: 3")
-        print("   🛠️  Servicios: 10")
-        print("      - 3 Electricistas")
-        print("      - 3 Gasfíters")
-        print("      - 1 Programador web")
-        print("      - 1 Carpintero")
-        print("      - 1 Peluquero")
-        print("      - 1 Pintor")
-        print("\n📝 CREDENCIALES DE PRUEBA:")
-        print("   Email: juan@example.com   | Password: 123456")
-        print("   Email: maria@example.com  | Password: 123456")
-        print("   Email: pedro@example.com  | Password: 123456")
-        print("\n🎯 Usa estas credenciales para hacer login en el frontend")
+        print(f"   👥 Usuarios totales: {final_users}")
+        print(f"   🛠️  Servicios totales: {final_services}")
+        print("\n📝 CREDENCIALES DE PRUEBA (si fueron creadas):")
+        print("   juan@example.com | 123456")
+        print("   maria@example.com | 123456")
+        print("   pedro@example.com | 123456")
+        print("\n🎯 Usa estas credenciales para login inicial.")
         print("=" * 60)
-        
     except Exception as e:
         print(f"\n❌ Error al inicializar la base de datos: {e}")
         import traceback
