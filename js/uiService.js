@@ -5,7 +5,7 @@ import * as DataService from './dataService.js';
 import * as ApiService from './apiService.js';
 import * as MapService from './mapService.js';
 import { haversineDistance, formatPrice, getModalityLabel, debounce } from './utils.js';
-import { validatePhoneNumber, getPublicContactInfo, revealContactInfo, formatPhoneNumber, generateWhatsAppURL } from './contactService.js';
+import { validatePhoneNumber, getPublicContactInfo, revealContactInfo, formatPhoneNumber, generateWhatsAppURL, handleEmailContact } from './contactService.js';
 
 // --- Referencias a elementos del DOM ---
 const modals = {
@@ -709,6 +709,16 @@ export const showDetailPanel = async (service) => {
 
     // Cargar y mostrar reviews
     await loadAndDisplayReviews(service.id);
+
+    // Añadir listener para el botón de contacto por email
+    const emailContactBtn = document.getElementById('email-contact-btn');
+    if (emailContactBtn) {
+        emailContactBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const email = e.currentTarget.dataset.email;
+            handleEmailContact(email);
+        });
+    }
 };
 
 /**
@@ -1055,10 +1065,10 @@ export const renderFullContact = (service) => {
 
     if (fullContact.method === 'email') {
         contactHTML += `
-            <a href="mailto:${fullContact.email}" class="detail-action-btn primary" title="Se abrirá tu cliente de email">
+            <button class="detail-action-btn primary" data-email="${fullContact.email}" id="email-contact-btn">
                 ✉️ Contactar por Email
-            </a>
-            <p class="contact-hint">Al hacer clic se abrirá tu aplicación de correo</p>
+            </button>
+            <p class="contact-hint">Se intentará abrir tu cliente de correo</p>
         `;
     } else {
         const fullPhoneNumber = `${fullContact.countryCode}${fullContact.phone}`;
@@ -1152,7 +1162,7 @@ function renderReviewItem(review, currentUser) {
     const isOwner = currentUser && currentUser.id === review.reviewer_user_id;
     
     return `
-        <div class="review-item" data-review-id="${review.id}">
+        <div class="review-item" data-review-id="${review.id}" data-current-rating="${review.rating}">
             <div class="review-header">
                 <div class="review-author">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1232,6 +1242,7 @@ function attachReviewFormListeners(serviceId) {
                 
                 // Actualizar visualización
                 stars.forEach((s, index) => {
+                    s.classList.toggle('filled', index < selectedRating);
                     s.textContent = index < selectedRating ? '★' : '☆';
                 });
                 
@@ -1251,7 +1262,9 @@ function attachReviewFormListeners(serviceId) {
         
         starRating.addEventListener('mouseleave', () => {
             stars.forEach((s, index) => {
-                s.textContent = index < selectedRating ? '★' : '☆';
+                const isFilled = index < selectedRating;
+                s.classList.toggle('filled', isFilled);
+                s.textContent = isFilled ? '★' : '☆';
             });
         });
     }
@@ -1316,15 +1329,101 @@ async function handleCreateReview(serviceId, rating) {
  * @param {number} reviewId - ID de la review
  */
 async function handleEditReview(reviewId) {
-    // TODO: Implementar modal de edición con selector de estrellas
-    const newRating = prompt('Nueva calificación (1-5):');
-    if (newRating && newRating >= 1 && newRating <= 5) {
+    const reviewItem = document.querySelector(`.review-item[data-review-id="${reviewId}"]`);
+    if (!reviewItem) return;
+
+    // Evitar múltiples ediciones simultáneas
+    const alreadyEditing = document.querySelector('.review-item.editing');
+    if (alreadyEditing && alreadyEditing !== reviewItem) {
+        // Restaurar previa antes de abrir otra
+        if (alreadyEditing.dataset.originalContent) {
+            alreadyEditing.innerHTML = alreadyEditing.dataset.originalContent;
+            alreadyEditing.classList.remove('editing');
+        }
+    }
+
+    if (!reviewItem.dataset.originalContent) {
+        reviewItem.dataset.originalContent = reviewItem.innerHTML;
+    }
+
+    const currentRating = parseFloat(reviewItem.getAttribute('data-current-rating')) || 0;
+
+    // Generar estrellas con estado inicial
+    const buildStars = (filled) => {
+        let html = '';
+        for (let i = 1; i <= 5; i++) {
+            const isFilled = i <= filled;
+            html += `<span class="star ${isFilled ? 'filled' : ''}" data-value="${i}">${isFilled ? '★' : '☆'}</span>`;
+        }
+        return html;
+    };
+
+    reviewItem.classList.add('editing');
+    reviewItem.innerHTML = `
+        <div class="inline-edit-review" data-rating="${currentRating}">
+            <div class="edit-instructions">Edita tu valoración</div>
+            <div class="star-rating editing" data-rating="${currentRating}">
+                ${buildStars(currentRating)}
+            </div>
+            <div class="edit-review-buttons">
+                <button class="btn-save-edit-review" data-review-id="${reviewId}">Guardar</button>
+                <button class="btn-cancel-edit-review">Cancelar</button>
+            </div>
+        </div>
+    `;
+
+    // Lógica interactiva de estrellas
+    const starContainer = reviewItem.querySelector('.star-rating.editing');
+    const stars = starContainer.querySelectorAll('.star');
+    let selected = currentRating;
+
+    stars.forEach(star => {
+        star.addEventListener('click', () => {
+            selected = parseInt(star.dataset.value);
+            starContainer.dataset.rating = selected;
+            stars.forEach(s => {
+                const v = parseInt(s.dataset.value);
+                const fill = v <= selected;
+                s.classList.toggle('filled', fill);
+                s.textContent = fill ? '★' : '☆';
+            });
+        });
+        star.addEventListener('mouseenter', () => {
+            const hoverValue = parseInt(star.dataset.value);
+            stars.forEach(s => {
+                const v = parseInt(s.dataset.value);
+                s.textContent = v <= hoverValue ? '★' : '☆';
+            });
+        });
+    });
+    starContainer.addEventListener('mouseleave', () => {
+        stars.forEach(s => {
+            const v = parseInt(s.dataset.value);
+            const fill = v <= selected;
+            s.classList.toggle('filled', fill);
+            s.textContent = fill ? '★' : '☆';
+        });
+    });
+
+    // Botón Cancelar
+    reviewItem.querySelector('.btn-cancel-edit-review').addEventListener('click', () => {
+        reviewItem.innerHTML = reviewItem.dataset.originalContent;
+        reviewItem.classList.remove('editing');
+        // Reajuntar listeners para el contenido restaurado
+        attachReviewFormListeners(parseInt(document.getElementById('detail-panel')?.dataset.serviceId));
+    });
+
+    // Botón Guardar
+    reviewItem.querySelector('.btn-save-edit-review').addEventListener('click', async () => {
+        const newRating = parseInt(starContainer.dataset.rating);
+        if (!newRating || newRating < 1 || newRating > 5) {
+            showNotification('Selecciona una calificación válida (1-5)', 'error');
+            return;
+        }
         try {
             const { updateReview } = await import('./apiService.js');
-            await updateReview(reviewId, { rating: parseFloat(newRating) });
+            await updateReview(reviewId, { rating: newRating });
             showNotification('Valoración actualizada', 'success');
-            
-            // Recargar reviews del servicio actual
             const detailPanel = document.getElementById('detail-panel');
             const serviceId = parseInt(detailPanel.dataset.serviceId);
             if (serviceId) {
@@ -1334,7 +1433,7 @@ async function handleEditReview(reviewId) {
             console.error('Error actualizando review:', error);
             showNotification('Error al actualizar la valoración', 'error');
         }
-    }
+    });
 }
 
 /**

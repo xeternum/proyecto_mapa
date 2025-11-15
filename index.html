@@ -584,5 +584,18 @@
     <!-- control-staging-area eliminado para evitar IDs duplicados -->
     <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
     <script type="module" src="js/main.js"></script>
+
+    <!-- Panel de Fallback para Contacto por Correo -->
+    <div id="email-fallback-panel" class="email-fallback-panel">
+        <div class="fallback-header">
+            <h4>Contacto por correo</h4>
+            <button id="close-fallback-panel" class="close-fallback-btn">&times;</button>
+        </div>
+        <p class="fallback-email-display" id="fallback-email-text"></p>
+        <div class="fallback-actions">
+            <button id="fallback-copy-email" class="fallback-btn copy-btn">Copiar correo</button>
+            <a id="fallback-open-gmail" href="#" target="_blank" class="fallback-btn gmail-btn">Abrir en Gmail</a>
+        </div>
+    </div>
 </body>
 </html>

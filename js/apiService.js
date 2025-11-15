@@ -4,10 +4,9 @@
 // API SERVICE - Conexión con Backend Real
 // ============================================
 
-import { GEOCODING_API_URL } from './config.js';
+import { GEOCODING_API_URL, API_BASE_URL } from './config.js';
 
-// URL base de la API real
-const API_BASE_URL = 'http://127.0.0.1:8000/api/v1';
+// URL base de la API real (desde config)
 
 // ============================================
 // HELPERS

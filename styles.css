@@ -2017,16 +2017,6 @@ body.detail-panel-open .floating-controls {
     font-size: 0.875rem;
 }
 
-.service-card-body p {
-    margin-bottom: 6px;
-    font-size: 0.875rem;
-    line-height: 1.4;
-}
-
-.service-card-body p:last-child {
-    margin-bottom: 0;
-}
-
 /* Responsive Design - Mobile First */
 @media (max-width: 768px) {
     /* CRITICAL: Panel fullscreen behavior - Override all base styles */
@@ -3135,6 +3125,9 @@ button:disabled .loading-spinner-small {
     border-radius: 4px;
     font-size: 0.75rem;
     font-weight: 600;
+    display: inline-block;
+    text-transform: uppercase; /* Mayúsculas para look formal */
+    letter-spacing: 0.5px;
 }
 
 .review-actions {
@@ -3161,6 +3154,58 @@ button:disabled .loading-spinner-small {
 .btn-edit-review:hover {
     background: #DBEAFE;
 }
+
+/* Inline edit review */
+.review-item.editing {
+  border-color: #86EFAC;
+  background: #F0FDF4;
+}
+
+.inline-edit-review {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.inline-edit-review .edit-instructions {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #065F46;
+}
+
+.edit-review-buttons {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+  justify-content: center;
+  margin-top: 0.25rem;
+}
+
+.btn-save-edit-review, .btn-cancel-edit-review {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+
+.btn-save-edit-review {
+  background: #2563EB;
+  color: #FFFFFF;
+}
+.btn-save-edit-review:hover { background: #1D4ED8; }
+
+.btn-cancel-edit-review {
+  background: #F3F4F6;
+  color: #374151;
+}
+.btn-cancel-edit-review:hover { background: #E5E7EB; }
+
+/* Reusar animación de estrellas */
+.inline-edit-review .star-rating.editing .star { cursor: pointer; }
 
 .btn-delete-review {
     background: #FEE2E2;
@@ -3202,9 +3247,14 @@ button:disabled .loading-spinner-small {
     user-select: none;
 }
 
-.star-rating .star:hover {
-    color: #F59E0B;
+.star-rating .star:hover,
+.star-rating .star.filled {
+    color: #FFD700; /* Dorado */
     transform: scale(1.2);
+}
+
+.star-rating .star.filled:hover {
+    color: #f0c400;
 }
 
 .submit-review-btn {
@@ -3222,7 +3272,6 @@ button:disabled .loading-spinner-small {
 .submit-review-btn:hover:not(:disabled) {
     background: #1D4ED8;
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
 }
 
 .submit-review-btn:disabled {
@@ -3418,15 +3467,15 @@ button:disabled .loading-spinner-small {
 .my-services-list {
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
-    padding: 2rem;
+    gap: 0.75rem;
+    padding: 1rem;
 }
 
 .my-service-card {
     background: #FFFFFF;
-    border: 2px solid #E5E7EB;
-    border-radius: 16px;
-    padding: 2rem;
+    border: 1px solid #E5E7EB;
+    border-radius: 12px;
+    padding: 1rem;
     transition: all 0.3s ease;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
@@ -3441,8 +3490,8 @@ button:disabled .loading-spinner-small {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 1.5rem;
-    gap: 1rem;
+    margin-bottom: 0.75rem;
+    gap: 0.75rem;
 }
 
 .my-service-header-left {
@@ -3450,10 +3499,10 @@ button:disabled .loading-spinner-small {
 }
 
 .my-service-title {
-    font-size: 1.375rem;
+    font-size: 1.125rem;
     font-weight: 700;
     color: #111827;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.35rem;
     line-height: 1.3;
 }
 
@@ -3461,11 +3510,11 @@ button:disabled .loading-spinner-small {
     display: inline-block;
     background: #EFF6FF;
     color: #2563EB;
-    padding: 6px 14px;
-    border-radius: 8px;
-    font-size: 0.8rem;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.75rem;
     font-weight: 600;
-    margin-top: 0.5rem;
+    margin-top: 0.25rem;
     letter-spacing: 0.3px;
 }
 
@@ -3473,15 +3522,15 @@ button:disabled .loading-spinner-small {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    font-size: 0.875rem;
+    font-size: 0.8rem;
     font-weight: 600;
     flex-shrink: 0;
 }
 
 .status-badge {
-    padding: 6px 14px;
-    border-radius: 8px;
-    font-size: 0.8rem;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.75rem;
     font-weight: 700;
     letter-spacing: 0.3px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
@@ -3499,25 +3548,29 @@ button:disabled .loading-spinner-small {
 
 .my-service-description {
     color: #4B5563;
-    font-size: 0.95rem;
-    line-height: 1.7;
-    margin-bottom: 1.5rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    margin-bottom: 0.75rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
 }
 
 /* Sección de detalles mejorada */
 .my-service-details {
     background: #F9FAFB;
-    border-radius: 12px;
-    padding: 1.5rem;
-    margin-bottom: 1.5rem;
+    border-radius: 8px;
+    padding: 0.75rem;
+    margin-bottom: 0.75rem;
     border: 1px solid #E5E7EB;
 }
 
 .service-detail-row {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 1.5rem;
-    margin-bottom: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 0.5rem;
 }
 
 .service-detail-row:last-child {
@@ -3527,7 +3580,7 @@ button:disabled .loading-spinner-small {
 .service-detail-item {
     display: flex;
     align-items: flex-start;
-    gap: 0.75rem;
+    gap: 0.5rem;
 }
 
 .service-detail-item.full-width {
@@ -3535,27 +3588,27 @@ button:disabled .loading-spinner-small {
 }
 
 .detail-icon {
-    font-size: 1.25rem;
+    font-size: 1rem;
     flex-shrink: 0;
-    width: 32px;
-    height: 32px;
+    width: 24px;
+    height: 24px;
     display: flex;
     align-items: center;
     justify-content: center;
     background: white;
-    border-radius: 8px;
+    border-radius: 6px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .detail-content {
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
+    gap: 0.15rem;
     flex: 1;
 }
 
 .detail-label {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     font-weight: 600;
     color: #6B7280;
     text-transform: uppercase;
@@ -3563,33 +3616,33 @@ button:disabled .loading-spinner-small {
 }
 
 .detail-value {
-    font-size: 0.95rem;
+    font-size: 0.85rem;
     font-weight: 500;
     color: #111827;
-    line-height: 1.4;
+    line-height: 1.3;
 }
 
 .my-service-actions {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 0.75rem;
-    padding-top: 1.5rem;
-    border-top: 2px solid #E5E7EB;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 0.5rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid #E5E7EB;
 }
 
 .service-action-btn {
-    padding: 0.875rem 1.25rem;
+    padding: 0.625rem 0.875rem;
     border: none;
-    border-radius: 10px;
-    font-weight: 700;
-    font-size: 0.875rem;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.8rem;
     cursor: pointer;
     transition: all 0.3s ease;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.5rem;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    gap: 0.35rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .service-action-btn:active {
@@ -3599,7 +3652,7 @@ button:disabled .loading-spinner-small {
 .btn-boost-service {
     background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
     color: white;
-    border: 2px solid #F59E0B;
+    border: 1px solid #F59E0B;
     position: relative;
     overflow: hidden;
 }
@@ -3607,57 +3660,57 @@ button:disabled .loading-spinner-small {
 .btn-boost-service:hover {
     background: linear-gradient(135deg, #D97706 0%, #B45309 100%);
     border-color: #D97706;
-    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
-    transform: translateY(-2px);
+    box-shadow: 0 3px 8px rgba(245, 158, 11, 0.35);
+    transform: translateY(-1px);
 }
 
 .btn-boost-service::after {
     content: '✨';
     position: absolute;
-    right: 10px;
+    right: 8px;
     opacity: 0;
     transition: all 0.3s;
 }
 
 .btn-boost-service:hover::after {
     opacity: 1;
-    right: 15px;
+    right: 12px;
 }
 
 .btn-edit-service {
     background: #EFF6FF;
     color: #2563EB;
-    border: 2px solid #DBEAFE;
+    border: 1px solid #DBEAFE;
 }
 
 .btn-edit-service:hover {
     background: #DBEAFE;
     border-color: #2563EB;
-    transform: translateY(-2px);
+    transform: translateY(-1px);
 }
 
 .btn-delete-service {
     background: #FEE2E2;
     color: #DC2626;
-    border: 2px solid #FECACA;
+    border: 1px solid #FECACA;
 }
 
 .btn-delete-service:hover {
     background: #FECACA;
     border-color: #DC2626;
-    transform: translateY(-2px);
+    transform: translateY(-1px);
 }
 
 .btn-toggle-status {
     background: #F3F4F6;
     color: #4B5563;
-    border: 2px solid #E5E7EB;
+    border: 1px solid #E5E7EB;
 }
 
 .btn-toggle-status:hover {
     background: #E5E7EB;
     border-color: #9CA3AF;
-    transform: translateY(-2px);
+    transform: translateY(-1px);
 }
 
 .no-services-message {
@@ -3946,4 +3999,107 @@ button:disabled .loading-spinner-small {
     .confirm-btn {
         width: 100%;
     }
+}
+
+/* Fallback de Contacto por Correo */
+.email-fallback-panel {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #fff;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    z-index: 2100;
+    padding: 1.5rem;
+    width: 90%;
+    max-width: 380px;
+    border: 1px solid #E5E7EB;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    transform: translate(-50%, 10px);
+    opacity: 0;
+    pointer-events: none;
+}
+
+.email-fallback-panel.visible {
+    transform: translateX(-50%);
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.fallback-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.fallback-header h4 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #111827;
+    margin: 0;
+}
+
+.close-fallback-btn {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: #9CA3AF;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+}
+
+.fallback-email-display {
+    background-color: #F9FAFB;
+    border: 1px solid #E5E7EB;
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    font-size: 0.95rem;
+    color: #1F2937;
+    margin-bottom: 1rem;
+    text-align: center;
+    word-break: break-all;
+    font-weight: 500;
+}
+
+.fallback-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+}
+
+.fallback-btn {
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.fallback-btn.copy-btn {
+    background-color: #EFF6FF;
+    color: #2563EB;
+    border-color: #DBEAFE;
+}
+
+.fallback-btn.copy-btn:hover {
+    background-color: #DBEAFE;
+}
+
+.fallback-btn.gmail-btn {
+    background-color: #F1F5F9;
+    color: #475569;
+    border-color: #E2E8F0;
+}
+
+.fallback-btn.gmail-btn:hover {
+    background-color: #E2E8F0;
 }

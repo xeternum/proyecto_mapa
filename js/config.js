@@ -76,3 +76,7 @@ export const DEFAULT_ZOOM = 13;
 
 // URLs de APIs
 export const GEOCODING_API_URL = 'https://nominatim.openstreetmap.org/reverse';
+// Backend API: configurable por ventana global en producción
+export const API_BASE_URL = (typeof window !== 'undefined' && window.API_BASE_URL)
+  ? window.API_BASE_URL
+  : 'http://127.0.0.1:8000/api/v1';

@@ -3,8 +3,9 @@
 // ============================================
 
 import { transformServiceToFrontend } from './apiService.js';
+import { API_BASE_URL } from './config.js';
 
-const API_BASE_URL = 'http://127.0.0.1:8000/api/v1';
+// Base URL de API (configurable)
 
 // Token de autenticación (se guarda en localStorage)
 let authToken = localStorage.getItem('authToken') || null;

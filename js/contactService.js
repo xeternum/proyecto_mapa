@@ -184,3 +184,83 @@ export function validateContactMethod(contactData) {
         errors
     };
 }
+
+/**
+ * Muestra un panel de fallback si el mailto falla.
+ * @param {string} email - La dirección de correo a mostrar.
+ */
+export function showEmailFallback(email) {
+    const fallbackPanel = document.getElementById('email-fallback-panel');
+    const emailText = document.getElementById('fallback-email-text');
+    const copyBtn = document.getElementById('fallback-copy-email');
+    const gmailLink = document.getElementById('fallback-open-gmail');
+    const closeBtn = document.getElementById('close-fallback-panel');
+
+    if (!fallbackPanel || !emailText || !copyBtn || !gmailLink || !closeBtn) {
+        console.error('Elementos del panel de fallback no encontrados.');
+        return;
+    }
+
+    emailText.textContent = email;
+    gmailLink.href = `https://mail.google.com/mail/?view=cm&fs=1&to=${email}`;
+
+    copyBtn.onclick = () => {
+        navigator.clipboard.writeText(email).then(() => {
+            copyBtn.textContent = '¡Copiado!';
+            setTimeout(() => {
+                copyBtn.textContent = 'Copiar correo';
+            }, 2000);
+        }).catch(err => {
+            console.error('Error al copiar el correo:', err);
+            alert('No se pudo copiar el correo. Por favor, cópialo manualmente.');
+        });
+    };
+
+    const closePanel = () => {
+        fallbackPanel.classList.remove('visible');
+    };
+
+    closeBtn.onclick = closePanel;
+
+    // Mostrar el panel
+    fallbackPanel.classList.add('visible');
+
+    // Ocultar si se hace clic fuera
+    document.addEventListener('click', (e) => {
+        if (!fallbackPanel.contains(e.target) && !e.target.closest('.detail-action-btn.primary')) {
+            closePanel();
+        }
+    }, { once: true });
+}
+
+/**
+ * Intenta abrir el cliente de correo y muestra un fallback si es necesario.
+ * @param {string} email - La dirección de correo del destinatario.
+ */
+export function handleEmailContact(email) {
+    const mailtoLink = `mailto:${email}`;
+    
+    // Intentar abrir mailto. Si el usuario cancela o no tiene cliente,
+    // puede que la ventana no pierda el foco. Usamos un timeout
+    // para detectar si la app sigue activa.
+    
+    let triggered = false;
+    
+    const visibilityChangeHandler = () => {
+        if (document.hidden) {
+            triggered = true;
+        }
+    };
+    
+    document.addEventListener('visibilitychange', visibilityChangeHandler);
+    
+    window.location.href = mailtoLink;
+    
+    setTimeout(() => {
+        document.removeEventListener('visibilitychange', visibilityChangeHandler);
+        // Si la página no se ocultó, es probable que el mailto no funcionara.
+        if (!triggered && !document.hidden) {
+            showEmailFallback(email);
+        }
+    }, 1000);
+}
