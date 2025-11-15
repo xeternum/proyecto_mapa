@@ -2,6 +2,8 @@
 // AUTH SERVICE - Gestión de Autenticación
 // ============================================
 
+import { transformServiceToFrontend } from './apiService.js';
+
 const API_BASE_URL = 'http://127.0.0.1:8000/api/v1';
 
 // Token de autenticación (se guarda en localStorage)
@@ -111,13 +113,21 @@ export function isAuthenticated() {
 
 /**
  * Obtener datos del usuario actual
+ * @param {boolean} forceRefresh - Forzar recarga desde API aunque exista en caché
  */
-export async function getCurrentUser() {
+export async function getCurrentUser(forceRefresh = false) {
     if (!authToken) {
         return null;
     }
     
+    // Usar caché si existe y no se fuerza refresh
+    if (currentUser && !forceRefresh) {
+        console.log('⚡ Usando usuario cacheado');
+        return currentUser;
+    }
+    
     try {
+        console.log('🔄 Obteniendo usuario desde API...');
         const response = await fetch(`${API_BASE_URL}/users/me`, {
             headers: getHeaders(true)
         });
@@ -138,6 +148,33 @@ export async function getCurrentUser() {
  */
 export function getCachedUser() {
     return currentUser;
+}
+
+/**
+ * Actualizar datos del usuario actual
+ */
+export async function updateUser(userData) {
+    if (!isAuthenticated()) {
+        throw new Error('Debes iniciar sesión para actualizar tu perfil');
+    }
+    
+    try {
+        console.log('🔄 Actualizando usuario...', userData);
+        const response = await fetch(`${API_BASE_URL}/users/me`, {
+            method: 'PUT',
+            headers: getHeaders(true),
+            body: JSON.stringify(userData)
+        });
+
+        const updatedUser = await handleResponse(response);
+        // Actualizar caché
+        currentUser = updatedUser;
+        console.log('✅ Usuario actualizado en caché');
+        return updatedUser;
+    } catch (error) {
+        console.error('Error actualizando usuario:', error);
+        throw error;
+    }
 }
 
 /**
@@ -195,11 +232,23 @@ export async function getMyServices() {
     }
     
     try {
-        const response = await fetch(`${API_BASE_URL}/services/me`, {
-            headers: getHeaders(true)
+        // Agregar timestamp para evitar caché del navegador
+        const timestamp = new Date().getTime();
+        const response = await fetch(`${API_BASE_URL}/services/me?_t=${timestamp}`, {
+            headers: getHeaders(true),
+            cache: 'no-cache' // Forzar que no use caché
         });
 
-        return await handleResponse(response);
+        const services = await handleResponse(response);
+        
+        console.log('📦 Servicios RAW del backend:', services);
+        
+        // Transformar servicios del backend al formato frontend
+        const transformed = services.map(service => transformServiceToFrontend(service));
+        
+        console.log('✨ Servicios transformados:', transformed);
+        
+        return transformed;
     } catch (error) {
         console.error('Error obteniendo mis servicios:', error);
         throw error;

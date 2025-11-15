@@ -47,7 +47,7 @@ async function handleResponse(response) {
 /**
  * Transforma servicio del backend al formato frontend
  */
-function transformServiceToFrontend(service) {
+export function transformServiceToFrontend(service) {
     return {
         id: service.id,
         serviceName: service.service_name,
@@ -100,7 +100,7 @@ export async function getServices(filters = {}) {
         if (filters.skip) params.append('skip', filters.skip);
         if (filters.limit) params.append('limit', filters.limit);
         
-        const url = `${API_BASE_URL}/services/${params.toString() ? '?' + params.toString() : ''}`;
+        const url = params.toString() ? `${API_BASE_URL}/services/?${params.toString()}` : `${API_BASE_URL}/services/`;
         
         const response = await fetch(url, {
             method: 'GET',
@@ -112,7 +112,7 @@ export async function getServices(filters = {}) {
         // Transformar servicios al formato frontend
         const transformedServices = services.map(transformServiceToFrontend);
         
-        console.log(`✅ API: ${transformedServices.length} servicios obtenidos`);
+        console.log(`✅ API: ${transformedServices.length} servicios obtenidos y transformados`);
         return transformedServices;
         
     } catch (error) {
@@ -178,39 +178,28 @@ export async function createService(serviceData) {
  */
 export async function updateService(serviceId, updateData) {
     try {
-        console.log('🌐 API: Actualizando servicio ID:', serviceId, 'con datos:', updateData);
+        console.log('🌐 API: Actualizando servicio ID:', serviceId);
+        console.log('📦 Datos recibidos:', updateData);
         
-        // Transformar datos del frontend al formato backend
-        const backendData = {};
-        if (updateData.serviceName) backendData.service_name = updateData.serviceName;
-        if (updateData.description) backendData.description = updateData.description;
-        if (updateData.category) backendData.category = updateData.category;
-        if (updateData.price) backendData.price = parseFloat(updateData.price);
-        if (updateData.priceModality) backendData.price_modality = updateData.priceModality;
-        if (updateData.schedule) backendData.schedule = updateData.schedule;
-        if (updateData.address) backendData.address = updateData.address;
-        if (updateData.location) {
-            backendData.latitude = updateData.location.lat;
-            backendData.longitude = updateData.location.lng;
-        }
-        if (updateData.contactMethod) {
-            backendData.contact_method = updateData.contactMethod.method;
-            backendData.contact_email = updateData.contactMethod.email || null;
-            backendData.contact_phone = updateData.contactMethod.phone || null;
-            backendData.contact_country_code = updateData.contactMethod.countryCode || null;
-            backendData.whatsapp_available = updateData.contactMethod.whatsappAvailable || false;
-        }
+        // Los datos ya vienen en formato snake_case desde main.js
+        // Solo enviamos directamente al backend
+        
+        console.log('📤 Enviando al endpoint PUT:', `${API_BASE_URL}/services/${serviceId}`);
         
         const response = await fetch(`${API_BASE_URL}/services/${serviceId}`, {
             method: 'PUT',
             headers: getHeaders(true), // Requiere autenticación
-            body: JSON.stringify(backendData)
+            body: JSON.stringify(updateData)
         });
         
+        console.log('📥 Respuesta HTTP status:', response.status);
+        
         const service = await handleResponse(response);
+        console.log('📦 Servicio devuelto por backend:', service);
+        
         const transformedService = transformServiceToFrontend(service);
         
-        console.log('✅ API: Servicio actualizado exitosamente:', transformedService);
+        console.log('✅ API: Servicio actualizado y transformado:', transformedService);
         return transformedService;
         
     } catch (error) {
@@ -324,3 +313,115 @@ export const getStreetAddress = async (lat, lng) => {
         return 'Dirección no disponible';
     }
 };
+
+// ========================================
+// REVIEWS API
+// ========================================
+
+/**
+ * Obtiene todas las reviews de un servicio
+ * @param {number} serviceId - ID del servicio
+ * @returns {Promise<Array>} - Array de reviews
+ */
+export async function getServiceReviews(serviceId) {
+    try {
+        console.log('🌐 API: Obteniendo reviews del servicio:', serviceId);
+        
+        const response = await fetch(`${API_BASE_URL}/reviews/service/${serviceId}`, {
+            method: 'GET',
+            headers: getHeaders(false)
+        });
+        
+        const reviews = await handleResponse(response);
+        console.log(`✅ API: ${reviews.length} reviews obtenidas`);
+        return reviews;
+        
+    } catch (error) {
+        console.error('❌ Error obteniendo reviews:', error);
+        return [];
+    }
+}
+
+/**
+ * Crea una nueva review para un servicio
+ * @param {Object} reviewData - Datos de la review {serviceId, rating}
+ * @returns {Promise<Object>} - Review creada
+ */
+export async function createReview(reviewData) {
+    try {
+        console.log('🌐 API: Creando review:', reviewData);
+        
+        const backendData = {
+            service_id: reviewData.serviceId,
+            rating: reviewData.rating
+        };
+        
+        const response = await fetch(`${API_BASE_URL}/reviews/`, {
+            method: 'POST',
+            headers: getHeaders(true), // Requiere autenticación
+            body: JSON.stringify(backendData)
+        });
+        
+        const review = await handleResponse(response);
+        console.log('✅ API: Review creada exitosamente:', review);
+        return review;
+        
+    } catch (error) {
+        console.error('❌ Error creando review:', error);
+        throw error;
+    }
+}
+
+/**
+ * Actualiza una review existente
+ * @param {number} reviewId - ID de la review
+ * @param {Object} reviewData - Datos a actualizar {rating}
+ * @returns {Promise<Object>} - Review actualizada
+ */
+export async function updateReview(reviewId, reviewData) {
+    try {
+        console.log('🌐 API: Actualizando review:', reviewId);
+        
+        const backendData = {
+            rating: reviewData.rating
+        };
+        
+        const response = await fetch(`${API_BASE_URL}/reviews/${reviewId}`, {
+            method: 'PUT',
+            headers: getHeaders(true), // Requiere autenticación
+            body: JSON.stringify(backendData)
+        });
+        
+        const review = await handleResponse(response);
+        console.log('✅ API: Review actualizada exitosamente:', review);
+        return review;
+        
+    } catch (error) {
+        console.error('❌ Error actualizando review:', error);
+        throw error;
+    }
+}
+
+/**
+ * Elimina una review
+ * @param {number} reviewId - ID de la review
+ * @returns {Promise<boolean>} - true si se eliminó exitosamente
+ */
+export async function deleteReview(reviewId) {
+    try {
+        console.log('🌐 API: Eliminando review:', reviewId);
+        
+        const response = await fetch(`${API_BASE_URL}/reviews/${reviewId}`, {
+            method: 'DELETE',
+            headers: getHeaders(true) // Requiere autenticación
+        });
+        
+        await handleResponse(response);
+        console.log('✅ API: Review eliminada exitosamente');
+        return true;
+        
+    } catch (error) {
+        console.error('❌ Error eliminando review:', error);
+        throw error;
+    }
+}

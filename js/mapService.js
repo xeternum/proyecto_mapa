@@ -8,6 +8,7 @@ let tempServiceMarker;
 let isSelectingLocation = false;
 let onLocationSelectCallback;
 let serviceMarkers = new Map(); // Almacenar marcadores por ID de servicio
+let radiusCircle = null; // Círculo que muestra el radio de búsqueda
 
 const categoryIcons = {
     // Servicios del hogar
@@ -254,5 +255,37 @@ export const removeTempMarker = () => {
     if (tempServiceMarker) {
         map.removeLayer(tempServiceMarker);
         tempServiceMarker = null;
+    }
+};
+
+/**
+ * Muestra un círculo en el mapa indicando el radio de búsqueda.
+ * @param {number} lat - Latitud del centro
+ * @param {number} lng - Longitud del centro
+ * @param {number} radiusKm - Radio en kilómetros
+ */
+export const showRadiusCircle = (lat, lng, radiusKm) => {
+    // Eliminar círculo anterior si existe
+    hideRadiusCircle();
+    
+    // Crear círculo con estilo minimalista y elegante
+    radiusCircle = L.circle([lat, lng], {
+        radius: radiusKm * 1000, // Convertir km a metros
+        color: '#2563EB',        // Borde azul
+        weight: 2,               // Grosor del borde
+        opacity: 0.6,            // Opacidad del borde
+        fillColor: '#2563EB',    // Relleno azul
+        fillOpacity: 0.1,        // Relleno muy sutil
+        dashArray: '5, 10'       // Línea punteada elegante
+    }).addTo(map);
+};
+
+/**
+ * Oculta y elimina el círculo de radio del mapa.
+ */
+export const hideRadiusCircle = () => {
+    if (radiusCircle) {
+        map.removeLayer(radiusCircle);
+        radiusCircle = null;
     }
 };

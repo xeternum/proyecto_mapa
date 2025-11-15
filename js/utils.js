@@ -76,3 +76,19 @@ export const getModalityLabel = (modality) => {
     
     return labels[modality] || 'Por servicio';
 };
+
+/**
+ * Debounce: Retrasa la ejecución de una función hasta que haya pasado un tiempo sin llamadas
+ * @param {Function} func - Función a ejecutar
+ * @param {number} delay - Tiempo de espera en milisegundos
+ * @returns {Function} - Función con debounce aplicado
+ */
+export const debounce = (func, delay = 500) => {
+    let timeoutId;
+    return function (...args) {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => {
+            func.apply(this, args);
+        }, delay);
+    };
+};

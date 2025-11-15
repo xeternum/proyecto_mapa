@@ -16,23 +16,36 @@ export const initSearchService = () => {
 };
 
 /**
- * Searches users based on a search term.
+ * Searches users based on a search term and optional radius filter.
  * The search is performed on the serviceName, category, and address fields.
  * @param {string} searchTerm - The term to search for.
+ * @param {number} maxRadius - Maximum distance in kilometers (optional).
  * @returns {Array} - Filtered and sorted users.
  */
-export const searchUsers = (searchTerm) => {
-    if (!searchTerm) return allUsers;
+export const searchUsers = (searchTerm, maxRadius = null) => {
+    let filteredUsers = allUsers;
 
-    const lowerCaseSearchTerm = searchTerm.toLowerCase();
+    // Filter by search term
+    if (searchTerm) {
+        const lowerCaseSearchTerm = searchTerm.toLowerCase();
 
-    const filteredUsers = allUsers.filter(user => {
-        const serviceNameMatch = user.serviceName && user.serviceName.toLowerCase().includes(lowerCaseSearchTerm);
-        const categoryMatch = user.category && user.category.toLowerCase().includes(lowerCaseSearchTerm);
-        const addressMatch = user.address && user.address.toLowerCase().includes(lowerCaseSearchTerm);
+        filteredUsers = filteredUsers.filter(user => {
+            const serviceNameMatch = user.serviceName && user.serviceName.toLowerCase().includes(lowerCaseSearchTerm);
+            const categoryMatch = user.category && user.category.toLowerCase().includes(lowerCaseSearchTerm);
+            const addressMatch = user.address && user.address.toLowerCase().includes(lowerCaseSearchTerm);
 
-        return serviceNameMatch || categoryMatch || addressMatch;
-    });
+            return serviceNameMatch || categoryMatch || addressMatch;
+        });
+    }
+
+    // Filter by radius
+    if (maxRadius !== null && centerLocation) {
+        filteredUsers = filteredUsers.filter(user => {
+            if (!user.location) return false;
+            const distance = haversineDistance(centerLocation, user.location);
+            return distance <= maxRadius;
+        });
+    }
 
     // Sort by distance from the center location
     filteredUsers.sort((a, b) => {

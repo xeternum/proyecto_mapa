@@ -27,8 +27,6 @@ export function validateServiceData(serviceData) {
     // Validar descripción
     if (!serviceData.description || !serviceData.description.trim()) {
         errors.push('La descripción del servicio es requerida.');
-    } else if (serviceData.description.trim().length < 10) {
-        errors.push('La descripción debe tener al menos 10 caracteres.');
     } else if (serviceData.description.trim().length > 500) {
         errors.push('La descripción no puede exceder 500 caracteres.');
     }

@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.api.v1.endpoints.login import get_current_active_user
 from app.crud import crud_service
 from app.db.session import get_db
+from app.db.base import Service as ServiceModel
 from app.schemas.service import Service, ServiceCreate, ServiceUpdate, ServiceWithOwner
 from app.schemas.user import User
 
@@ -36,20 +37,34 @@ def read_services(
 ) -> List[ServiceWithOwner]:
     """
     Obtener lista de servicios con filtros opcionales
-    - **category**: Filtrar por categoría
+    - **category**: Filtrar por categoría (case-insensitive)
     - **search**: Buscar en nombre y descripción
     - **active_only**: Solo servicios activos (default: True)
+    
+    Los filtros se pueden combinar (search + category)
     """
+    # Construir query base
+    query = db.query(ServiceModel)
+    
+    # Aplicar filtros
+    if active_only:
+        query = query.filter(ServiceModel.is_active == True)
+    
+    if category:
+        # Filtro de categoría case-insensitive
+        query = query.filter(ServiceModel.category.ilike(category))
+    
     if search:
-        services = crud_service.service.search(db, query=search, skip=skip, limit=limit)
-    elif category:
-        services = crud_service.service.get_by_category(
-            db, category=category, skip=skip, limit=limit
+        # Buscar en nombre, descripción y categoría
+        search_term = f"%{search}%"
+        query = query.filter(
+            (ServiceModel.service_name.ilike(search_term)) |
+            (ServiceModel.description.ilike(search_term)) |
+            (ServiceModel.category.ilike(search_term))
         )
-    elif active_only:
-        services = crud_service.service.get_active_services(db, skip=skip, limit=limit)
-    else:
-        services = crud_service.service.get_multi(db, skip=skip, limit=limit)
+    
+    # Aplicar paginación y ejecutar
+    services = query.offset(skip).limit(limit).all()
     
     return services
 

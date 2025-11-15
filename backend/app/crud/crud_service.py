@@ -22,10 +22,13 @@ class CRUDService(CRUDBase[Service, ServiceCreate, ServiceUpdate]):
     def get_by_category(
         self, db: Session, *, category: str, skip: int = 0, limit: int = 100
     ) -> List[Service]:
-        """Obtener servicios por categoría"""
+        """Obtener servicios por categoría (case-insensitive)"""
         return (
             db.query(Service)
-            .filter(Service.category == category, Service.is_active == True)
+            .filter(
+                Service.category.ilike(category),  # Case-insensitive match
+                Service.is_active == True
+            )
             .offset(skip)
             .limit(limit)
             .all()

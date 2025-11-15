@@ -4,7 +4,7 @@ import { SERVICE_CATEGORIES } from './config.js';
 import * as DataService from './dataService.js';
 import * as ApiService from './apiService.js';
 import * as MapService from './mapService.js';
-import { haversineDistance, formatPrice, getModalityLabel } from './utils.js';
+import { haversineDistance, formatPrice, getModalityLabel, debounce } from './utils.js';
 import { validatePhoneNumber, getPublicContactInfo, revealContactInfo, formatPhoneNumber, generateWhatsAppURL } from './contactService.js';
 
 // --- Referencias a elementos del DOM ---
@@ -97,6 +97,64 @@ export const hideModal = (modalName) => {
 export const hideAllModals = () => {
     Object.values(modals).forEach(modal => modal.classList.add('hidden-section'));
     document.body.style.overflow = 'auto';
+};
+
+/**
+ * Muestra un diálogo de confirmación moderno
+ * @param {string} title - Título del diálogo
+ * @param {string} message - Mensaje del diálogo
+ * @param {Object} options - Opciones { confirmText, cancelText, isDanger }
+ * @returns {Promise<boolean>} - Promesa que resuelve true si confirma, false si cancela
+ */
+export const showConfirm = (title, message, options = {}) => {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('confirm-modal');
+        const titleEl = document.getElementById('confirm-modal-title');
+        const messageEl = document.getElementById('confirm-modal-message');
+        const confirmBtn = document.getElementById('confirm-modal-confirm');
+        const cancelBtn = document.getElementById('confirm-modal-cancel');
+        
+        // Configurar textos
+        titleEl.textContent = title;
+        messageEl.textContent = message;
+        confirmBtn.textContent = options.confirmText || 'Confirmar';
+        cancelBtn.textContent = options.cancelText || 'Cancelar';
+        
+        // Configurar estilo del botón de confirmar
+        if (options.isDanger !== false) {
+            confirmBtn.className = 'confirm-btn confirm-btn-danger';
+        } else {
+            confirmBtn.className = 'confirm-btn confirm-btn-primary';
+        }
+        
+        // Mostrar modal
+        modal.classList.remove('hidden-section');
+        
+        // Handlers
+        const handleConfirm = () => {
+            cleanup();
+            resolve(true);
+        };
+        
+        const handleCancel = () => {
+            cleanup();
+            resolve(false);
+        };
+        
+        const cleanup = () => {
+            modal.classList.add('hidden-section');
+            confirmBtn.removeEventListener('click', handleConfirm);
+            cancelBtn.removeEventListener('click', handleCancel);
+        };
+        
+        // Agregar listeners
+        confirmBtn.addEventListener('click', handleConfirm);
+        cancelBtn.addEventListener('click', handleCancel);
+        
+        // Cerrar al hacer clic en el overlay
+        const overlay = modal.querySelector('.confirm-modal-overlay');
+        overlay.addEventListener('click', handleCancel, { once: true });
+    });
 };
 
 /**
@@ -380,7 +438,13 @@ export const renderSearchResults = (users) => {
         if (user.distance) {
             const distance = document.createElement('div');
             distance.className = 'service-distance-prominent';
-            distance.innerHTML = `<span class="distance-value">${user.distance.toFixed(1)}</span> <span class="distance-unit">km</span>`;
+            distance.innerHTML = `
+                <svg class="distance-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                    <circle cx="12" cy="10" r="3"></circle>
+                </svg>
+                <span class="distance-value">${user.distance.toFixed(1)}</span> <span class="distance-unit">km de ti</span>
+            `;
             footer.appendChild(distance);
         }
 
@@ -461,41 +525,91 @@ export const resetRegisterForm = () => {
 };
 
 /**
- * Inicializa los dropdowns de categoría y servicio en el formulario de publicación.
+ * Inicializa el selector moderno de categorías en el formulario de publicación.
  */
 export const initPublishFormCategories = () => {
-    const mainCategorySelect = document.getElementById('service-main-category');
-    const subCategorySelect = document.getElementById('service-subcategory');
+    const mainCategoryGrid = document.getElementById('main-category-grid');
+    const subcategoryContainer = document.getElementById('subcategory-container');
+    const subcategoryGrid = document.getElementById('subcategory-grid');
+    const backButton = document.getElementById('back-to-categories');
+    const selectedDisplay = document.getElementById('selected-category-display');
+    const selectedText = document.getElementById('selected-category-text');
+    const mainCategoryInput = document.getElementById('service-main-category');
+    const subcategoryInput = document.getElementById('service-subcategory');
 
-    // Limpiar opciones existentes
-    mainCategorySelect.innerHTML = '<option value="">Selecciona una categoría</option>';
-    subCategorySelect.innerHTML = '<option value="">Selecciona un servicio</option>';
-
-    // Llenar el dropdown de categorías principales
+    // Limpiar contenido previo
+    if (mainCategoryGrid) mainCategoryGrid.innerHTML = '';
+    if (subcategoryGrid) subcategoryGrid.innerHTML = '';
+    
+    // Renderizar categorías principales
     SERVICE_CATEGORIES.forEach(category => {
-        const option = document.createElement('option');
-        option.value = category.categoria;
-        option.textContent = category.categoria;
-        mainCategorySelect.appendChild(option);
-    });
-
-    // Listener para cambios en la categoría principal
-    mainCategorySelect.addEventListener('change', () => {
-        const selectedCategoryName = mainCategorySelect.value;
-        subCategorySelect.innerHTML = '<option value="">Selecciona un servicio</option>'; // Resetear
-
-        if (selectedCategoryName) {
-            const selectedCategory = SERVICE_CATEGORIES.find(c => c.categoria === selectedCategoryName);
-            if (selectedCategory) {
-                selectedCategory.servicios.forEach(service => {
-                    const option = document.createElement('option');
-                    option.value = service;
-                    option.textContent = service;
-                    subCategorySelect.appendChild(option);
+        const categoryCard = document.createElement('button');
+        categoryCard.type = 'button';
+        categoryCard.className = 'category-card';
+        categoryCard.innerHTML = `
+            <span class="category-name">${category.categoria}</span>
+        `;
+        
+        categoryCard.addEventListener('click', () => {
+            // Guardar categoría principal
+            mainCategoryInput.value = category.categoria;
+            
+            // Mostrar subcategorías
+            mainCategoryGrid.parentElement.style.display = 'none';
+            subcategoryContainer.classList.remove('hidden');
+            
+            // Renderizar subcategorías
+            subcategoryGrid.innerHTML = '';
+            category.servicios.forEach(service => {
+                const serviceCard = document.createElement('button');
+                serviceCard.type = 'button';
+                serviceCard.className = 'subcategory-card';
+                serviceCard.innerHTML = `
+                    <span class="subcategory-name">${service}</span>
+                `;
+                
+                serviceCard.addEventListener('click', () => {
+                    // Guardar subcategoría
+                    subcategoryInput.value = service;
+                    
+                    // Mostrar selección (solo la subcategoría)
+                    selectedText.textContent = service;
+                    selectedDisplay.classList.remove('hidden');
+                    
+                    // Ocultar subcategorías y volver a vista inicial
+                    subcategoryContainer.classList.add('hidden');
+                    mainCategoryGrid.parentElement.style.display = 'block';
+                    
+                    // Marcar la categoría como seleccionada visualmente
+                    document.querySelectorAll('.category-card').forEach(card => {
+                        card.classList.remove('selected');
+                    });
+                    categoryCard.classList.add('selected');
+                    
+                    // Scroll automático hacia el siguiente campo
+                    setTimeout(() => {
+                        const nextField = document.getElementById('service-name');
+                        if (nextField) {
+                            nextField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            nextField.focus();
+                        }
+                    }, 300);
                 });
-            }
-        }
+                
+                subcategoryGrid.appendChild(serviceCard);
+            });
+        });
+        
+        mainCategoryGrid.appendChild(categoryCard);
     });
+    
+    // Botón de volver a categorías principales
+    if (backButton) {
+        backButton.addEventListener('click', () => {
+            subcategoryContainer.classList.add('hidden');
+            mainCategoryGrid.parentElement.style.display = 'block';
+        });
+    }
 };
 
 /**
@@ -513,10 +627,14 @@ export const initEventListeners = (callbacks) => {
     document.getElementById('close-publish-panel').addEventListener('click', togglePublishPanel);
     document.getElementById('close-profile-modal').addEventListener('click', callbacks.onCloseModal);
 
-    // Búsqueda en tiempo real
+    // Búsqueda en tiempo real CON DEBOUNCE (espera 500ms después de que el usuario deje de escribir)
+    const debouncedSearch = debounce((searchTerm) => {
+        callbacks.onSearchInput(searchTerm);
+    }, 500);
+
     serviceSearchInput.addEventListener('input', (e) => {
         const searchTerm = e.target.value.toLowerCase();
-        callbacks.onSearchInput(searchTerm);
+        debouncedSearch(searchTerm);
     });
 
     // Listener para cambio de tamaño de ventana (orientación móvil)
@@ -564,15 +682,21 @@ const setViewportHeight = () => {
  * Muestra el panel de detalles con la información completa del servicio.
  * @param {Object} service - Los datos del servicio a mostrar.
  */
-export const showDetailPanel = (service) => {
+export const showDetailPanel = async (service) => {
     const detailPanel = document.getElementById('detail-panel');
     const serviceDetailContent = detailPanel.querySelector('.service-detail-content');
+    
+    // Almacenar serviceId en el panel para referencias posteriores
+    detailPanel.dataset.serviceId = service.id;
     
     // Renderizar el contenido del servicio
     serviceDetailContent.innerHTML = renderServiceDetails(service);
     
     // Mostrar el panel
     detailPanel.classList.add('is-open');
+    
+    // Agregar clase al body para reposicionar controles flotantes
+    document.body.classList.add('detail-panel-open');
     
     // En móvil, podemos ocultar otros paneles para dar más espacio
     const isMobile = window.innerWidth < 768;
@@ -582,6 +706,9 @@ export const showDetailPanel = (service) => {
         detailPanel.style.right = '0';
         document.body.style.overflow = 'hidden';
     }
+
+    // Cargar y mostrar reviews
+    await loadAndDisplayReviews(service.id);
 };
 
 /**
@@ -590,6 +717,9 @@ export const showDetailPanel = (service) => {
 export const hideDetailPanel = () => {
     const detailPanel = document.getElementById('detail-panel');
     detailPanel.classList.remove('is-open');
+    
+    // Remover clase del body
+    document.body.classList.remove('detail-panel-open');
     
     // Restaurar estilos móviles
     const isMobile = window.innerWidth < 768;
@@ -686,6 +816,15 @@ const renderServiceDetails = (service) => {
             </div>
         </div>
         ` : ''}
+
+        <!-- Sección de Reviews -->
+        <div class="service-detail-section">
+            <h4>💬 Valoraciones y Opiniones</h4>
+            <div id="reviews-container">
+                <div class="loading-reviews">Cargando valoraciones...</div>
+            </div>
+            <div id="review-form-container"></div>
+        </div>
 
         <div class="service-detail-actions">
             ${renderFullContact(service)}
@@ -948,3 +1087,276 @@ export const renderFullContact = (service) => {
     contactHTML += '</div>';
     return contactHTML;
 };
+
+// ========================================
+// REVIEWS SYSTEM
+// ========================================
+
+/**
+ * Carga y muestra las reviews de un servicio
+ * @param {number} serviceId - ID del servicio
+ */
+async function loadAndDisplayReviews(serviceId) {
+    const reviewsContainer = document.getElementById('reviews-container');
+    const reviewFormContainer = document.getElementById('review-form-container');
+    
+    if (!reviewsContainer) return;
+
+    try {
+        // Importar dinámicamente apiService y authService
+        const { getServiceReviews } = await import('./apiService.js');
+        const { getAuthToken, getCachedUser } = await import('./authService.js');
+        
+        const reviews = await getServiceReviews(serviceId);
+        // Usar usuario cacheado para evitar petición innecesaria
+        const currentUser = getAuthToken() ? getCachedUser() : null;
+        
+        // Renderizar reviews
+        if (reviews.length === 0) {
+            reviewsContainer.innerHTML = '<p class="no-reviews">Aún no hay valoraciones. ¡Sé el primero en valorar este servicio!</p>';
+        } else {
+            reviewsContainer.innerHTML = reviews.map(review => renderReviewItem(review, currentUser)).join('');
+        }
+        
+        // Mostrar formulario de review si el usuario está autenticado
+        if (currentUser) {
+            // Verificar si el usuario ya hizo una review
+            const userReview = reviews.find(r => r.reviewer_user_id === currentUser.id);
+            
+            if (userReview) {
+                reviewFormContainer.innerHTML = renderEditReviewForm(userReview);
+            } else {
+                reviewFormContainer.innerHTML = renderCreateReviewForm(serviceId);
+            }
+            
+            attachReviewFormListeners(serviceId);
+        } else {
+            reviewFormContainer.innerHTML = '<p class="review-login-prompt">Inicia sesión para valorar este servicio</p>';
+        }
+        
+    } catch (error) {
+        console.error('Error cargando reviews:', error);
+        reviewsContainer.innerHTML = '<p class="error-reviews">Error al cargar las valoraciones</p>';
+    }
+}
+
+/**
+ * Renderiza un item de review
+ * @param {Object} review - Review a renderizar
+ * @param {Object} currentUser - Usuario actual (si está autenticado)
+ * @returns {string} HTML del review item
+ */
+function renderReviewItem(review, currentUser) {
+    const stars = '★'.repeat(Math.round(review.rating)) + '☆'.repeat(5 - Math.round(review.rating));
+    const date = new Date(review.created_at).toLocaleDateString('es-CL');
+    const isOwner = currentUser && currentUser.id === review.reviewer_user_id;
+    
+    return `
+        <div class="review-item" data-review-id="${review.id}">
+            <div class="review-header">
+                <div class="review-author">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                    <span>${review.reviewer?.full_name || 'Usuario'}</span>
+                </div>
+                <div class="review-rating">${stars}</div>
+            </div>
+            <div class="review-meta">
+                <span class="review-date">${date}</span>
+                ${isOwner ? '<span class="review-badge">Tu valoración</span>' : ''}
+            </div>
+            ${isOwner ? `
+                <div class="review-actions">
+                    <button class="btn-edit-review" data-review-id="${review.id}">Editar</button>
+                    <button class="btn-delete-review" data-review-id="${review.id}">Eliminar</button>
+                </div>
+            ` : ''}
+        </div>
+    `;
+}
+
+/**
+ * Renderiza el formulario para crear una review
+ * @param {number} serviceId - ID del servicio
+ * @returns {string} HTML del formulario
+ */
+function renderCreateReviewForm(serviceId) {
+    return `
+        <div class="review-form">
+            <h5>¿Usaste este servicio? ¡Valóralo!</h5>
+            <div class="star-rating" data-rating="0">
+                <span class="star" data-value="1">☆</span>
+                <span class="star" data-value="2">☆</span>
+                <span class="star" data-value="3">☆</span>
+                <span class="star" data-value="4">☆</span>
+                <span class="star" data-value="5">☆</span>
+            </div>
+            <button id="btn-submit-review" class="submit-review-btn" disabled>Enviar valoración</button>
+        </div>
+    `;
+}
+
+/**
+ * Renderiza el formulario para editar una review
+ * @param {Object} review - Review a editar
+ * @returns {string} HTML del formulario
+ */
+function renderEditReviewForm(review) {
+    const stars = '★'.repeat(Math.round(review.rating)) + '☆'.repeat(5 - Math.round(review.rating));
+    
+    return `
+        <div class="review-form edit-mode">
+            <h5>Tu valoración actual: ${stars} (${review.rating}/5)</h5>
+            <p class="review-edit-hint">Ya valoraste este servicio. Puedes editar o eliminar tu valoración desde arriba.</p>
+        </div>
+    `;
+}
+
+/**
+ * Adjunta listeners a los elementos del formulario de review
+ * @param {number} serviceId - ID del servicio
+ */
+function attachReviewFormListeners(serviceId) {
+    // Star rating interactivo
+    const starRating = document.querySelector('.star-rating');
+    if (starRating) {
+        const stars = starRating.querySelectorAll('.star');
+        let selectedRating = 0;
+        
+        stars.forEach(star => {
+            star.addEventListener('click', () => {
+                selectedRating = parseInt(star.dataset.value);
+                starRating.dataset.rating = selectedRating;
+                
+                // Actualizar visualización
+                stars.forEach((s, index) => {
+                    s.textContent = index < selectedRating ? '★' : '☆';
+                });
+                
+                // Habilitar botón
+                const submitBtn = document.getElementById('btn-submit-review');
+                if (submitBtn) submitBtn.disabled = false;
+            });
+            
+            // Hover effect
+            star.addEventListener('mouseenter', () => {
+                const hoverValue = parseInt(star.dataset.value);
+                stars.forEach((s, index) => {
+                    s.textContent = index < hoverValue ? '★' : '☆';
+                });
+            });
+        });
+        
+        starRating.addEventListener('mouseleave', () => {
+            stars.forEach((s, index) => {
+                s.textContent = index < selectedRating ? '★' : '☆';
+            });
+        });
+    }
+    
+    // Botón de enviar review
+    const submitBtn = document.getElementById('btn-submit-review');
+    if (submitBtn) {
+        submitBtn.addEventListener('click', async () => {
+            const rating = parseInt(starRating.dataset.rating);
+            if (rating > 0) {
+                await handleCreateReview(serviceId, rating);
+            }
+        });
+    }
+    
+    // Botones de editar/eliminar
+    document.querySelectorAll('.btn-edit-review').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const reviewId = parseInt(btn.dataset.reviewId);
+            await handleEditReview(reviewId);
+        });
+    });
+    
+    document.querySelectorAll('.btn-delete-review').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const reviewId = parseInt(btn.dataset.reviewId);
+            await handleDeleteReview(reviewId, serviceId);
+        });
+    });
+}
+
+/**
+ * Maneja la creación de una review
+ * @param {number} serviceId - ID del servicio
+ * @param {number} rating - Calificación (1-5)
+ */
+async function handleCreateReview(serviceId, rating) {
+    try {
+        const { createReview } = await import('./apiService.js');
+        
+        showNotification('Enviando valoración...', 'info');
+        
+        await createReview({ serviceId, rating });
+        
+        showNotification('¡Valoración enviada exitosamente!', 'success');
+        
+        // Recargar reviews
+        await loadAndDisplayReviews(serviceId);
+        
+    } catch (error) {
+        console.error('Error creando review:', error);
+        if (error.message.includes('No puedes crear una reseña de tu propio servicio')) {
+            showNotification('No puedes valorar tu propio servicio', 'error');
+        } else {
+            showNotification('Error al enviar la valoración', 'error');
+        }
+    }
+}
+
+/**
+ * Maneja la edición de una review
+ * @param {number} reviewId - ID de la review
+ */
+async function handleEditReview(reviewId) {
+    // TODO: Implementar modal de edición con selector de estrellas
+    const newRating = prompt('Nueva calificación (1-5):');
+    if (newRating && newRating >= 1 && newRating <= 5) {
+        try {
+            const { updateReview } = await import('./apiService.js');
+            await updateReview(reviewId, { rating: parseFloat(newRating) });
+            showNotification('Valoración actualizada', 'success');
+            
+            // Recargar reviews del servicio actual
+            const detailPanel = document.getElementById('detail-panel');
+            const serviceId = parseInt(detailPanel.dataset.serviceId);
+            if (serviceId) {
+                await loadAndDisplayReviews(serviceId);
+            }
+        } catch (error) {
+            console.error('Error actualizando review:', error);
+            showNotification('Error al actualizar la valoración', 'error');
+        }
+    }
+}
+
+/**
+ * Maneja la eliminación de una review
+ * @param {number} reviewId - ID de la review
+ * @param {number} serviceId - ID del servicio
+ */
+async function handleDeleteReview(reviewId, serviceId) {
+    const confirmed = await showConfirm(
+        '¿Eliminar valoración?',
+        '¿Estás seguro de eliminar tu valoración?',
+        { confirmText: 'Eliminar', cancelText: 'Cancelar' }
+    );
+    if (confirmed) {
+        try {
+            const { deleteReview } = await import('./apiService.js');
+            await deleteReview(reviewId);
+            showNotification('Valoración eliminada', 'success');
+            await loadAndDisplayReviews(serviceId);
+        } catch (error) {
+            console.error('Error eliminando review:', error);
+            showNotification('Error al eliminar la valoración', 'error');
+        }
+    }
+}
