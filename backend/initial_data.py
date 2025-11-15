@@ -3,10 +3,10 @@
 Script para inicializar la base de datos con datos de prueba
 Crea las tablas, categorías, usuarios y servicios de ejemplo
 
-NUEVO: 10 servicios distribuidos:
-- 3 Electricistas
-- 3 Gasfíters
-- 4 Categorías diferentes (Programador web, Carpintero, Peluquero, Pintor)
+NUEVO: Compatible con SQLite (desarrollo) y PostgreSQL (producción)
+NOTA: Este script ahora es un wrapper de app.db.init_db para mantener compatibilidad.
+
+Puedes usar directamente: python -m app.db.init_db
 """
 
 import os

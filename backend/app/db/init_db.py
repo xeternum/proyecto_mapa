@@ -62,3 +62,17 @@ def init_db(db: Session) -> None:
     db.add_all(categories_to_insert)
     db.commit()
     print("✅ Categorías cargadas exitosamente")
+
+# Punto de entrada para ejecutar como módulo: python -m app.db.init_db
+if __name__ == "__main__":
+    from .session import SessionLocal
+    db = SessionLocal()
+    try:
+        print("🚀 Inicializando base de datos...")
+        init_db(db)
+        print("✅ Proceso completado")
+    except Exception as e:
+        print(f"❌ Error: {e}")
+        raise
+    finally:
+        db.close()
