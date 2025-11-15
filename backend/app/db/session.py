@@ -11,8 +11,13 @@ if settings.SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
     )
 else:
     # PostgreSQL: usa pool_pre_ping para reconexiones automáticas
+    # Forzar uso de psycopg (v3) en lugar de psycopg2
+    db_url = settings.SQLALCHEMY_DATABASE_URL
+    if db_url.startswith("postgresql://") and "+psycopg" not in db_url:
+        db_url = db_url.replace("postgresql://", "postgresql+psycopg://")
+    
     engine = create_engine(
-        settings.SQLALCHEMY_DATABASE_URL,
+        db_url,
         pool_pre_ping=True
     )
 
