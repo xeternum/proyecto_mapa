@@ -41,8 +41,22 @@ async def security_headers(request: Request, call_next):
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Permissions-Policy"] = "geolocation=(), microphone=()"
-    # CSP mínima; ajusta si cargas scripts/estilos externos
-    response.headers["Content-Security-Policy"] = "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self';"
+
+    # Si se accede a /docs o /redoc relajamos CSP para permitir assets externos de Swagger UI.
+    # Riesgo: 'unsafe-inline' y CDN externo. Alternativa más segura: servir swagger-ui local y usar nonce/hashes.
+    path = request.url.path
+    if path.startswith("/docs") or path.startswith("/redoc"):
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self' https://cdn.jsdelivr.net; "
+            "img-src 'self' data: https://fastapi.tiangolo.com; "
+            "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+        )
+    else:
+        # Estricta por defecto para el resto de la API
+        response.headers["Content-Security-Policy"] = (
+            "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self';"
+        )
     return response
 
 # Incluir router de API v1
